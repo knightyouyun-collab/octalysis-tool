@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>八角行为模型评估工具</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700;900&family=Space+Mono:wght@400;700&display=swap');
@@ -18,15 +18,15 @@
     --accent: #6a9be8;
     --accent2: #e86a9b;
     --text: #e8e8f0;
-    --muted: #6a6a80;
-    --c1: #e86a6a; /* 史诗意义 */
-    --c2: #e8a06a; /* 进步成就 */
-    --c3: #e8c96a; /* 创意赋能 */
-    --c4: #a0e86a; /* 所有权 */
-    --c5: #6ae8c9; /* 社交影响 */
-    --c6: #6aa0e8; /* 稀缺渴望 */
-    --c7: #9b6ae8; /* 未知好奇 */
-    --c8: #e86aa0; /* 亏损逃避 */
+    --muted: #a0a0b8;
+    --c1: #e86a6a;
+    --c2: #e8a06a;
+    --c3: #e8c96a;
+    --c4: #a0e86a;
+    --c5: #6ae8c9;
+    --c6: #6aa0e8;
+    --c7: #9b6ae8;
+    --c8: #e86aa0;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -143,49 +143,43 @@
 
   #productName::placeholder { color: var(--muted); }
 
-  /* Main layout */
+  /* Main layout — vertical stack */
   .main-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    display: flex;
+    flex-direction: column;
     gap: 24px;
-    align-items: start;
   }
 
-  /* Octagon display */
+  /* Octagon display — centered, max width */
   .octagon-panel {
-    position: sticky;
-    top: 16px;
-  }
-
-  .panel-label {
-    font-family: 'Space Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 0.25em;
-    color: var(--muted);
-    text-transform: uppercase;
-    margin-bottom: 12px;
+    position: static;
+    text-align: center;
   }
 
   #octCanvas {
     display: block;
     width: 100%;
-    max-width: 560px;
+    max-width: 520px;
     margin: 0 auto;
   }
 
-  /* Scoring panel */
+  /* Scoring panel — 2-col grid of cards */
   .scoring-panel {}
 
   .drives-list {
-    display: flex;
-    flex-direction: column;
-    gap: 7px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  @media (max-width: 600px) {
+    .drives-list { grid-template-columns: 1fr; }
   }
 
   .drive-card {
     background: var(--surface);
     border: 1px solid var(--border);
-    padding: 10px 14px;
+    padding: 16px 18px;
     transition: border-color 0.2s;
     position: relative;
     overflow: hidden;
@@ -203,48 +197,45 @@
 
   .drive-header {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
-    gap: 8px;
-    margin-bottom: 7px;
+    gap: 12px;
+    margin-bottom: 10px;
   }
 
-  .drive-info {
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
-    flex: 1;
-    min-width: 0;
-  }
+  .drive-info { flex: 1; min-width: 0; }
 
   .drive-num {
     font-family: 'Space Mono', monospace;
     font-size: 9px;
     color: var(--color);
-    letter-spacing: 0.1em;
+    letter-spacing: 0.12em;
+    margin-bottom: 3px;
     white-space: nowrap;
-    flex-shrink: 0;
   }
 
   .drive-name {
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 700;
     color: var(--text);
     line-height: 1.2;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    margin-bottom: 3px;
   }
 
-  .drive-desc { display: none; }
+  .drive-desc {
+    display: block;
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
 
   .score-display {
     font-family: 'Space Mono', monospace;
-    font-size: 18px;
+    font-size: 28px;
     font-weight: 700;
     color: var(--color);
     line-height: 1;
-    min-width: 28px;
+    min-width: 40px;
     text-align: right;
     flex-shrink: 0;
   }
@@ -255,7 +246,7 @@
     -webkit-appearance: none;
     appearance: none;
     width: 100%;
-    height: 3px;
+    height: 4px;
     background: var(--border);
     border-radius: 0;
     outline: none;
@@ -278,7 +269,7 @@
   .slider-scale {
     display: flex;
     justify-content: space-between;
-    margin-top: 3px;
+    margin-top: 4px;
   }
 
   .slider-scale span {
@@ -287,65 +278,37 @@
     color: var(--muted);
   }
 
-  /* ── iPad (768–1024px): keep 2-col but tighten ── */
+  /* ── iPad ── */
   @media (max-width: 1024px) and (min-width: 601px) {
     .container { padding: 28px 20px 60px; }
-    .main-grid { gap: 16px; }
     .report-stats { grid-template-columns: repeat(4, 1fr); }
     .rec-grid { grid-template-columns: repeat(2, 1fr); }
   }
 
-  /* ── Mobile (≤600px): single column everything ── */
+  /* ── Mobile ── */
   @media (max-width: 600px) {
     .container { padding: 20px 14px 60px; }
     header { margin-bottom: 24px; }
     .subtitle { font-size: 12px; }
     .product-input-wrap { margin-bottom: 24px; }
-
-    /* On mobile: octagon on top, scoring below */
-    .main-grid {
-      grid-template-columns: 1fr;
-      gap: 16px;
-    }
-
-    /* Un-stick the canvas on mobile */
-    .octagon-panel { position: static; }
-
     #octCanvas { max-width: 320px; }
-
-    .drive-name { font-size: 12px; }
-    .score-display { font-size: 16px; }
-
-    /* Report */
-    .report-hero {
-      padding: 20px 18px;
-      flex-direction: column;
-      gap: 16px;
-    }
+    .drive-name { font-size: 13px; }
+    .score-display { font-size: 24px; }
+    .report-hero { padding: 20px 18px; flex-direction: column; gap: 16px; }
     .report-score-block { text-align: left; }
     .report-score-num { font-size: 36px; }
     .report-product-name { font-size: 18px; }
-
-    .report-stats {
-      grid-template-columns: repeat(2, 1fr);
-    }
-    .stat-cell { padding: 12px 10px; }
-    .stat-cell-value { font-size: 16px; }
-
+    .report-stats { grid-template-columns: repeat(2, 1fr); }
     .report-body { grid-template-columns: 1fr; }
     .report-section { padding: 16px; }
-
     .result-bar-row { grid-template-columns: 1fr 30px 80px; gap: 6px; }
     .result-bar-name { font-size: 10px; }
-
     .profile-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
     .profile-card { padding: 10px; }
     .profile-card-score { font-size: 18px; }
     .profile-card-desc { font-size: 9px; }
-
     .report-recommendations { padding: 16px; }
     .rec-grid { grid-template-columns: 1fr; gap: 10px; }
-
     .report-conclusion { padding: 18px; }
     .conclusion-text { font-size: 12px; }
   }
@@ -692,7 +655,7 @@
 
   .rec-card-text {
     font-size: 11px;
-    color: var(--muted);
+    color: #c8c8dc;
     line-height: 1.65;
   }
 
@@ -712,7 +675,7 @@
     align-items: flex-start;
     gap: 7px;
     font-size: 10px;
-    color: var(--muted);
+    color: #b8b8cc;
     line-height: 1.5;
     margin-bottom: 4px;
   }
@@ -735,7 +698,7 @@
 
   .conclusion-text {
     font-size: 13px;
-    color: var(--muted);
+    color: #c8c8dc;
     line-height: 1.8;
   }
 
@@ -852,6 +815,7 @@
 
   .fab-btn.wechat:hover { border-color: #07c160; color: #07c160; }
   .fab-btn.export-img:hover { border-color: var(--accent); color: var(--accent); }
+  .fab-btn.export-pdf:hover { border-color: #e86a6a; color: #e86a6a; }
 
   /* ── Modal base ── */
   .modal-overlay {
@@ -1132,6 +1096,10 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
     <span class="btn-label">导出为图片</span>
   </button>
+  <button class="fab-btn export-pdf" onclick="exportPDF()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>
+    <span class="btn-label">导出为 PDF</span>
+  </button>
 </div>
 
 <!-- ── Share modal ── -->
@@ -1180,7 +1148,7 @@
       </div>
       <div class="about-row">
         <span class="about-key">VERSION</span>
-        <span class="about-val gold">v1.6.5</span>
+        <span class="about-val gold">v1.6.9</span>
       </div>
       <div class="about-row">
         <span class="about-key">DEVELOPER</span>
@@ -1224,7 +1192,7 @@
     <div class="title-badge">Octalysis Framework</div>
     <h1>八角行为<span>模型</span>评估</h1>
     <p class="subtitle">Yu-kai Chou 游戏化实战框架 · 八大核心驱动力</p>
-    <p class="creator-tag">Created by JayWen &nbsp;·&nbsp; v1.6.5</p>
+    <p class="creator-tag">Created by JayWen &nbsp;·&nbsp; v1.6.9</p>
   </header>
 
   <div class="product-input-wrap">
@@ -1235,13 +1203,13 @@
   </div>
 
   <div class="main-grid">
-    <!-- Octagon canvas -->
+    <!-- Octagon canvas — top, centered -->
     <div class="octagon-panel">
       <div class="panel-label">实时预览</div>
       <canvas id="octCanvas" width="560" height="560"></canvas>
     </div>
 
-    <!-- Scoring -->
+    <!-- Scoring — bottom, 2-col grid -->
     <div class="scoring-panel">
       <div class="panel-label">八大驱动力评分（0–10）</div>
       <div class="drives-list" id="drivesList"></div>
@@ -1915,7 +1883,7 @@ async function shareMoments() {
     // Branding
     c.fillStyle = 'rgba(232,201,106,0.35)';
     c.font = '500 10px Space Mono, monospace';
-    c.fillText('Created by JayWen · v1.6.5', tx, H - 24);
+    c.fillText('Created by JayWen · v1.6.9', tx, H - 24);
 
     // Download card
     const dataUrl = cardCanvas.toDataURL('image/png');
@@ -1961,112 +1929,328 @@ function hideExportOverlay() {
   document.getElementById('exportOverlay').classList.remove('active');
 }
 
+
+// ── Shared canvas builder (returns a canvas element) ──
+async function buildReportCanvas() {
+  // helpers
+  function pt(deg, r, cx, cy) {
+    const rad = (deg-90)*Math.PI/180;
+    return [cx+r*Math.cos(rad), cy+r*Math.sin(rad)];
+  }
+  const productName = document.getElementById('productName').value.trim() || '未命名产品';
+  const total = scores.reduce((a,b)=>a+b,0);
+  const avg = (total/8).toFixed(1);
+  const whiteCD = scores[0]+scores[1]+scores[2]+scores[3];
+  const blackCD = scores[4]+scores[5]+scores[6]+scores[7];
+  const leftBrain = scores[1]+scores[3]+scores[5]+scores[7];
+  const rightBrain = scores[0]+scores[2]+scores[4]+scores[6];
+
+  const W = 1200, PAD = 48;
+  const COLORS = ['#e86a6a','#e8a06a','#e8c96a','#a0e86a','#6ae8c9','#6aa0e8','#9b6ae8','#e86aa0'];
+  const NAMES  = ['史诗意义与使命感','进步与成就感','创意赋能与反馈','所有权与拥有感','社交影响与关联','稀缺性与渴望感','未知性与好奇心','亏损与逃避心理'];
+  const ADVICE_LEVEL = scores.map(s => s>=7?'✦ 优势维度': s>=4?'◈ 待提升维度':'⚠ 薄弱维度');
+
+  const recCards = document.querySelectorAll('.rec-card');
+  const adviceData = Array.from(recCards).map(card => ({
+    summary: card.querySelector('.rec-card-text')?.textContent?.trim() || '',
+    actions: Array.from(card.querySelectorAll('.rec-action-item')).map(a=>a.textContent.trim())
+  }));
+
+  function wrapText(ctx, text, maxW) {
+    const words = text.split('');
+    let line = '', lines = [];
+    for (let ch of words) {
+      const test = line + ch;
+      if (ctx.measureText(test).width > maxW && line) { lines.push(line); line = ch; }
+      else line = test;
+    }
+    if (line) lines.push(line);
+    return lines;
+  }
+
+  function buildLayout(ctx) {
+    let y = PAD;
+    const sections = [];
+    sections.push({ type:'header', y, h:100 }); y += 116;
+    sections.push({ type:'stats', y, h:80 }); y += 96;
+    const radarH = 320;
+    sections.push({ type:'radar_bars', y, h:radarH }); y += radarH + 16;
+    sections.push({ type:'section_title', y, text:'各维度诊断与改进建议', h:32 }); y += 44;
+    const cardW = (W - PAD*2 - 16) / 2;
+    ctx.font = '500 13px "Noto Serif SC"';
+    for (let i = 0; i < 8; i += 2) {
+      let maxH = 0;
+      for (let j = 0; j < 2; j++) {
+        const idx = i+j; if (idx >= 8) break;
+        let h = 44;
+        h += 14;
+        const sumLines = wrapText(ctx, adviceData[idx]?.summary||'', cardW - 32);
+        h += sumLines.length * 18 + 8;
+        for (let act of (adviceData[idx]?.actions||[])) {
+          h += wrapText(ctx, '→ ' + act, cardW - 40).length * 17 + 4;
+        }
+        h += 16;
+        maxH = Math.max(maxH, h);
+      }
+      sections.push({ type:'rec_row', y, rowIdx:i, h:maxH, cardW }); y += maxH + 12;
+    }
+    sections.push({ type:'section_title', y, text:'综合诊断结论', h:32 }); y += 44;
+    ctx.font = '500 14px "Noto Serif SC"';
+    const conclusionText = document.getElementById('conclusionText')?.innerText || '';
+    const conLines = wrapText(ctx, conclusionText, W - PAD*2 - 32);
+    const conH = conLines.length * 22 + 32;
+    sections.push({ type:'conclusion', y, h:conH, lines:conLines }); y += conH + 16;
+    sections.push({ type:'footer', y, h:36 }); y += 36 + PAD;
+    return { sections, totalH: y };
+  }
+
+  const measCanvas = document.createElement('canvas');
+  measCanvas.width = W;
+  const mctx = measCanvas.getContext('2d');
+  const { sections, totalH } = buildLayout(mctx);
+
+  const c2 = document.createElement('canvas');
+  c2.width = W; c2.height = totalH;
+  const ctx = c2.getContext('2d');
+
+  ctx.fillStyle = '#f5f4ee';
+  ctx.fillRect(0, 0, W, totalH);
+
+  for (const sec of sections) {
+    const { type, y } = sec;
+
+    if (type === 'header') {
+      ctx.fillStyle = '#1a1a2e';
+      ctx.fillRect(PAD, y, W-PAD*2, sec.h);
+      ctx.fillStyle = '#e8c96a';
+      ctx.fillRect(PAD, y, W-PAD*2, 3);
+      ctx.fillStyle = 'rgba(232,201,106,0.7)';
+      ctx.font = '500 11px "Space Mono"';
+      ctx.fillText('OCTALYSIS GAMIFICATION REPORT', PAD+20, y+22);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 28px "Noto Serif SC"';
+      ctx.fillText(productName, PAD+20, y+58);
+      ctx.fillStyle = '#aaaacc';
+      ctx.font = '500 12px "Space Mono"';
+      ctx.fillText(`评估日期：${new Date().toLocaleDateString('zh-CN')}`, PAD+20, y+82);
+      ctx.fillStyle = '#e8c96a';
+      ctx.font = 'bold 52px "Space Mono"';
+      ctx.textAlign = 'right';
+      ctx.fillText(total, W-PAD-60, y+68);
+      ctx.fillStyle = 'rgba(232,201,106,0.5)';
+      ctx.font = '500 18px "Space Mono"';
+      ctx.fillText('/80', W-PAD-16, y+68);
+      ctx.fillStyle = '#aaaacc';
+      ctx.font = '500 11px "Noto Serif SC"';
+      ctx.fillText('综合游戏化得分', W-PAD-16, y+88);
+      ctx.textAlign = 'left';
+    }
+
+    if (type === 'stats') {
+      const cellW = (W-PAD*2-3*4)/4;
+      const statData = [
+        { label:'平均分', value:avg, sub:'满分 10 分', color:'#b8920a' },
+        { label:'白帽驱动', value:whiteCD, sub:'积极体验 /40', color:'#b8920a' },
+        { label:'黑帽驱动', value:blackCD, sub:'紧迫焦虑 /40', color:'#aa2255' },
+        { label:'左脑/右脑', value:`${leftBrain}/${rightBrain}`, sub:'外在/内在', color:'#5544aa' },
+      ];
+      statData.forEach((s,i) => {
+        const sx = PAD + i*(cellW+4);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(sx, y, cellW, sec.h);
+        ctx.fillStyle = '#666655';
+        ctx.font = '500 10px "Space Mono"';
+        ctx.fillText(s.label, sx+14, y+20);
+        ctx.fillStyle = s.color;
+        ctx.font = 'bold 26px "Space Mono"';
+        ctx.fillText(s.value, sx+14, y+54);
+        ctx.fillStyle = '#666655';
+        ctx.font = '500 10px "Noto Serif SC"';
+        ctx.fillText(s.sub, sx+14, y+72);
+      });
+    }
+
+    if (type === 'radar_bars') {
+      const radarSize = sec.h;
+      const CX = PAD + radarSize/2, CY = y + radarSize/2, R = radarSize*0.34;
+      const angles = [90,45,0,315,270,225,180,135];
+      for (let ring=2;ring<=10;ring+=2){
+        ctx.beginPath();
+        angles.forEach((a,i)=>{ const [rx,ry]=pt(a,R*ring/10,CX,CY); i===0?ctx.moveTo(rx,ry):ctx.lineTo(rx,ry); });
+        ctx.closePath();
+        ctx.strokeStyle=ring===10?'rgba(180,150,50,0.3)':'rgba(0,0,0,0.06)';
+        ctx.lineWidth=1; ctx.stroke();
+      }
+      angles.forEach(a=>{ const [rx,ry]=pt(a,R,CX,CY); ctx.beginPath();ctx.moveTo(CX,CY);ctx.lineTo(rx,ry);ctx.strokeStyle='rgba(0,0,0,0.08)';ctx.lineWidth=1;ctx.stroke(); });
+      ctx.beginPath();
+      angles.forEach((a,i)=>{ const [rx,ry]=pt(a,R*scores[i]/10,CX,CY); i===0?ctx.moveTo(rx,ry):ctx.lineTo(rx,ry); });
+      ctx.closePath();
+      const grad=ctx.createRadialGradient(CX,CY,0,CX,CY,R);
+      grad.addColorStop(0,'rgba(184,146,10,0.25)'); grad.addColorStop(1,'rgba(85,68,170,0.1)');
+      ctx.fillStyle=grad; ctx.fill();
+      ctx.strokeStyle='rgba(184,146,10,0.6)'; ctx.lineWidth=1.5; ctx.stroke();
+      const fontSize = Math.max(10, radarSize*0.032);
+      ctx.font = `bold ${fontSize}px "Noto Serif SC"`;
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      angles.forEach((a,i)=>{
+        const [rx,ry]=pt(a,R*scores[i]/10,CX,CY);
+        ctx.beginPath();ctx.arc(rx,ry,4,0,Math.PI*2);
+        ctx.fillStyle=COLORS[i];ctx.fill();
+        const [lx,ly]=pt(a,R+radarSize*0.13,CX,CY);
+        ctx.fillStyle=COLORS[i];
+        const parts=NAMES[i].split('与');
+        if(parts.length>1){ctx.fillText(parts[0]+'与',lx,ly-fontSize*0.7);ctx.fillText(parts[1],lx,ly+fontSize*0.7);}
+        else ctx.fillText(NAMES[i],lx,ly);
+      });
+      ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+
+      const barX = PAD + radarSize + 24;
+      const barW = W - PAD - barX;
+      const sorted=[...scores].map((s,i)=>({s,i})).sort((a,b)=>b.s-a.s);
+      const rowH = sec.h / 8 - 4;
+      sorted.forEach(({s,i},row)=>{
+        const by = y + row*(rowH+4);
+        ctx.fillStyle='#111122';
+        ctx.font=`500 12px "Noto Serif SC"`;
+        ctx.fillText(NAMES[i], barX, by+13);
+        ctx.fillStyle='#e0dfd8';
+        ctx.fillRect(barX, by+18, barW-40, 6);
+        ctx.fillStyle=COLORS[i];
+        ctx.fillRect(barX, by+18, (barW-40)*s/10, 6);
+        ctx.fillStyle=COLORS[i];
+        ctx.font=`bold 11px "Space Mono"`;
+        ctx.fillText(s, barX+barW-32, by+25);
+      });
+    }
+
+    if (type === 'section_title') {
+      ctx.fillStyle = '#7a5800';
+      ctx.font = '500 11px "Space Mono"';
+      ctx.fillText(sec.text.toUpperCase(), PAD, y+20);
+      ctx.fillStyle = '#ccccbb';
+      ctx.fillRect(PAD, y+26, W-PAD*2, 1);
+    }
+
+    if (type === 'rec_row') {
+      const { rowIdx, h:rowH, cardW } = sec;
+      function wrapText2(ctx, text, maxW) {
+        const chars = text.split('');
+        let line = '', lines = [];
+        for (let ch of chars) {
+          const test = line + ch;
+          if (ctx.measureText(test).width > maxW && line) { lines.push(line); line = ch; }
+          else line = test;
+        }
+        if (line) lines.push(line);
+        return lines;
+      }
+      for (let j=0; j<2; j++) {
+        const idx = rowIdx+j; if (idx>=8) break;
+        const cx = PAD + j*(cardW+16);
+        ctx.fillStyle='#ffffff'; ctx.fillRect(cx, y, cardW, rowH);
+        ctx.fillStyle=COLORS[idx]; ctx.fillRect(cx, y, 3, rowH);
+        ctx.strokeStyle='#d8d6cc'; ctx.lineWidth=1; ctx.strokeRect(cx, y, cardW, rowH);
+
+        let cy = y+16;
+        ctx.fillStyle='#111122'; ctx.font=`bold 13px "Noto Serif SC"`;
+        ctx.fillText(`CD${idx+1} · ${NAMES[idx]}`, cx+14, cy);
+        ctx.fillStyle=COLORS[idx]; ctx.font=`bold 11px "Space Mono"`;
+        ctx.textAlign='right'; ctx.fillText(`${scores[idx]}/10`, cx+cardW-14, cy);
+        ctx.textAlign='left'; cy+=18;
+
+        ctx.fillStyle=COLORS[idx]; ctx.font=`500 10px "Space Mono"`;
+        ctx.fillText(ADVICE_LEVEL[idx], cx+14, cy); cy+=18;
+
+        ctx.fillStyle='#222233'; ctx.font=`500 12px "Noto Serif SC"`;
+        const sumLines = wrapText2(ctx, adviceData[idx]?.summary||'', cardW-28);
+        sumLines.forEach(l=>{ ctx.fillText(l, cx+14, cy); cy+=18; }); cy+=4;
+
+        ctx.font=`500 11px "Noto Serif SC"`;
+        for (let act of (adviceData[idx]?.actions||[])) {
+          ctx.fillStyle=COLORS[idx]; ctx.fillText('→', cx+14, cy);
+          ctx.fillStyle='#333344';
+          const aLines = wrapText2(ctx, act, cardW-40);
+          aLines.forEach((l,li)=>{ ctx.fillText(l, cx+28, cy+li*17); });
+          cy += aLines.length*17 + 4;
+        }
+      }
+    }
+
+    if (type === 'conclusion') {
+      ctx.fillStyle='#ffffff'; ctx.fillRect(PAD, y, W-PAD*2, sec.h);
+      ctx.strokeStyle='#d8d6cc'; ctx.lineWidth=1; ctx.strokeRect(PAD, y, W-PAD*2, sec.h);
+      ctx.fillStyle='#111122'; ctx.font=`500 14px "Noto Serif SC"`;
+      sec.lines.forEach((l,i)=>{ ctx.fillText(l, PAD+16, y+24+i*22); });
+    }
+
+    if (type === 'footer') {
+      ctx.fillStyle='rgba(120,100,0,0.5)';
+      ctx.font=`500 10px "Space Mono"`;
+      ctx.textAlign='center';
+      ctx.fillText(`Created by JayWen · Octalysis Tool v1.6.9 · ${new Date().toLocaleDateString('zh-CN')}`, W/2, y+20);
+      ctx.textAlign='left';
+    }
+  }
+
+  return c2;
+}
+
+// ── Export as Image ──
 async function exportImage() {
   if (!document.getElementById('resultPanel').classList.contains('visible')) {
     showToast('请先生成评估报告'); return;
   }
-  showExportOverlay('正在生成图片…');
+  showExportOverlay('正在绘制报告图片…');
   try {
-    const panel = document.getElementById('resultPanel');
-    const name = document.getElementById('productName').value.trim() || '八角评估报告';
-
-    // Step 1: inject light theme + snapshot canvas on real DOM
-    const lightStyle = document.createElement('style');
-    lightStyle.id = '__export_light__';
-    lightStyle.textContent = `
-      body { background: #f5f4f0 !important; }
-      body::before { display: none !important; }
-      .topbar { visibility: hidden !important; }
-      #resultPanel { background: #f5f4f0 !important; }
-      .report-hero { background: #1e1e32 !important; border-color: #1e1e32 !important; }
-      .report-eyebrow { color: #e8c96a !important; }
-      .report-product-name { color: #ffffff !important; }
-      .report-date { color: #9999bb !important; }
-      .report-score-num { color: #e8c96a !important; }
-      .report-score-denom, .report-score-label { color: #9999bb !important; }
-      .report-grade { color: #e8c96a !important; border-color: #e8c96a !important; }
-      .stat-cell { background: #ffffff !important; border-color: #ccc !important; }
-      .stat-cell-label, .stat-cell-sub { color: #555544 !important; }
-      .report-section, .report-recommendations, .report-conclusion {
-        background: #ffffff !important; border-color: #ccccbb !important;
-      }
-      .section-title { color: #7a5800 !important; border-color: #ccccbb !important; }
-      .result-bar-name { color: #111122 !important; font-weight: 600 !important; }
-      .result-bar-score { color: #333344 !important; }
-      .result-bar-track { background: #ddddd0 !important; }
-      .profile-card { background: #fafaf6 !important; border-color: #ccccbb !important; }
-      .profile-card-label { color: #555544 !important; }
-      .profile-card-score { color: inherit !important; }
-      .profile-card-bar { background: #ddddd0 !important; }
-      .profile-card-desc { color: #111122 !important; }
-      .rec-card { background: #ffffff !important; border-color: #ccccbb !important; }
-      .rec-card-name { color: #111122 !important; font-weight: 700 !important; }
-      .rec-score-badge { background: transparent !important; font-weight: 700 !important; }
-      .rec-level-tag { font-weight: 700 !important; opacity: 1 !important; }
-      .rec-card-text { color: #111122 !important; }
-      .rec-action-item { color: #222233 !important; }
-      .rec-actions { border-color: #ccccbb !important; }
-      .conclusion-text { color: #111122 !important; }
-      .conclusion-text strong { color: #000011 !important; }
-      .insight-tag { opacity: 1 !important; }
-    `;
-    document.head.appendChild(lightStyle);
-
-    // Snapshot octagon canvas → img
-    const origCanvas = document.getElementById('octCanvas');
-    const canvasDataUrl = origCanvas.toDataURL('image/png');
-    const fakeImg = document.createElement('img');
-    fakeImg.src = canvasDataUrl;
-    fakeImg.style.cssText = `width:${origCanvas.offsetWidth}px;height:${origCanvas.offsetHeight}px;display:block;margin:0 auto;`;
-    origCanvas.style.display = 'none';
-    origCanvas.parentNode.insertBefore(fakeImg, origCanvas);
-
-    await new Promise(r => setTimeout(r, 200));
-
-    // Step 2: capture at scale=3 for sharpness
-    const raw = await html2canvas(panel, {
-      backgroundColor: '#f5f4f0',
-      scale: 3,
-      useCORS: true,
-      allowTaint: true,
-      logging: false,
-      windowWidth: 1200,
-      height: panel.scrollHeight,
-      y: 0,
-    });
-
-    // Restore DOM
-    document.head.removeChild(lightStyle);
-    origCanvas.style.display = '';
-    fakeImg.parentNode.removeChild(fakeImg);
-
-    // Step 3: scale down to fixed 1200px wide on an output canvas
-    const TARGET_W = 1200;
-    const scale = TARGET_W / raw.width;
-    const outW = TARGET_W;
-    const outH = Math.round(raw.height * scale);
-
-    const out = document.createElement('canvas');
-    out.width = outW;
-    out.height = outH;
-    const octx = out.getContext('2d');
-    octx.imageSmoothingEnabled = true;
-    octx.imageSmoothingQuality = 'high';
-    octx.drawImage(raw, 0, 0, outW, outH);
-
-    // Step 4: download
-    const dataUrl = out.toDataURL('image/png');
+    const canvas = await buildReportCanvas();
+    const productName = document.getElementById('productName').value.trim() || '八角评估报告';
+    const dataUrl = canvas.toDataURL('image/png');
     const link = document.createElement('a');
-    link.download = `${name}-octalysis.png`;
+    link.download = `${productName}-octalysis.png`;
     link.href = dataUrl;
-    link.style.display = 'none';
+    link.style.display='none';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     showToast('✓ 图片已保存');
   } catch(e) {
-    console.error('Export image error:', e);
-    showToast('图片生成失败：' + e.message);
+    console.error('Export error:', e);
+    showToast('导出失败：' + e.message);
+  }
+  hideExportOverlay();
+}
+
+// ── Export as PDF (single page, custom size = full content) ──
+async function exportPDF() {
+  if (!document.getElementById('resultPanel').classList.contains('visible')) {
+    showToast('请先生成评估报告'); return;
+  }
+  showExportOverlay('正在生成 PDF…');
+  try {
+    const { jsPDF } = window.jspdf;
+    const canvas = await buildReportCanvas();
+    const productName = document.getElementById('productName').value.trim() || '八角评估报告';
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+
+    const PT_PER_PX = 0.75;
+    const pageW = canvas.width * PT_PER_PX;
+    const pageH = canvas.height * PT_PER_PX;
+
+    const pdf = new jsPDF({ orientation:'portrait', unit:'pt', format:[pageW, pageH] });
+    pdf.addImage(imgData, 'JPEG', 0, 0, pageW, pageH, '', 'FAST');
+
+    const pdfUri = pdf.output('datauristring');
+    const link = document.createElement('a');
+    link.href = pdfUri;
+    link.download = `${productName}-octalysis.pdf`;
+    link.style.display='none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast('✓ PDF 已保存');
+  } catch(e) {
+    console.error('PDF error:', e);
+    showToast('PDF 生成失败：' + e.message);
   }
   hideExportOverlay();
 }
