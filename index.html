@@ -1,0 +1,1855 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>八角行为模型评估工具</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700;900&family=Space+Mono:wght@400;700&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --border: #2a2a3a;
+    --gold: #e8c96a;
+    --gold-dim: #9a8040;
+    --accent: #6a9be8;
+    --accent2: #e86a9b;
+    --text: #e8e8f0;
+    --muted: #6a6a80;
+    --c1: #e86a6a; /* 史诗意义 */
+    --c2: #e8a06a; /* 进步成就 */
+    --c3: #e8c96a; /* 创意赋能 */
+    --c4: #a0e86a; /* 所有权 */
+    --c5: #6ae8c9; /* 社交影响 */
+    --c6: #6aa0e8; /* 稀缺渴望 */
+    --c7: #9b6ae8; /* 未知好奇 */
+    --c8: #e86aa0; /* 亏损逃避 */
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Serif SC', serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: 
+      linear-gradient(rgba(106,155,232,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(106,155,232,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+
+  /* Header */
+  header {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+
+  .title-badge {
+    display: inline-block;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.3em;
+    color: var(--gold);
+    border: 1px solid var(--gold-dim);
+    padding: 4px 14px;
+    margin-bottom: 16px;
+    text-transform: uppercase;
+  }
+
+  h1 {
+    font-size: clamp(28px, 5vw, 44px);
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    line-height: 1.1;
+  }
+
+  h1 span {
+    color: var(--gold);
+  }
+
+  .subtitle {
+    margin-top: 12px;
+    color: var(--muted);
+    font-size: 14px;
+    letter-spacing: 0.05em;
+  }
+
+  /* Product name input */
+  .product-input-wrap {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 48px;
+  }
+
+  .product-input-inner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 12px 20px;
+    width: 100%;
+    max-width: 480px;
+  }
+
+  .product-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--gold);
+    letter-spacing: 0.15em;
+    white-space: nowrap;
+  }
+
+  #productName {
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-family: 'Noto Serif SC', serif;
+    font-size: 15px;
+    outline: none;
+    width: 100%;
+  }
+
+  #productName::placeholder { color: var(--muted); }
+
+  /* Main layout */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+
+  /* Octagon display */
+  .octagon-panel {
+    position: sticky;
+    top: 16px;
+  }
+
+  .panel-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  #octCanvas {
+    display: block;
+    width: 100%;
+    max-width: 560px;
+    margin: 0 auto;
+  }
+
+  /* Scoring panel */
+  .scoring-panel {}
+
+  .drives-list {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .drive-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 10px 14px;
+    transition: border-color 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .drive-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--color);
+  }
+
+  .drive-card:hover { border-color: var(--color); }
+
+  .drive-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 7px;
+  }
+
+  .drive-info {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .drive-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--color);
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .drive-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .drive-desc { display: none; }
+
+  .score-display {
+    font-family: 'Space Mono', monospace;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--color);
+    line-height: 1;
+    min-width: 28px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  .slider-wrap { position: relative; }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 3px;
+    background: var(--border);
+    border-radius: 0;
+    outline: none;
+    cursor: pointer;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    background: var(--color);
+    border-radius: 0;
+    cursor: pointer;
+    transition: transform 0.1s;
+  }
+
+  input[type="range"]::-webkit-slider-thumb:active { transform: scale(1.2); }
+
+  .slider-scale {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 3px;
+  }
+
+  .slider-scale span {
+    font-family: 'Space Mono', monospace;
+    font-size: 8px;
+    color: var(--muted);
+  }
+
+  /* ── iPad (768–1024px): keep 2-col but tighten ── */
+  @media (max-width: 1024px) and (min-width: 601px) {
+    .container { padding: 28px 20px 60px; }
+    .main-grid { gap: 16px; }
+    .report-stats { grid-template-columns: repeat(4, 1fr); }
+    .rec-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  /* ── Mobile (≤600px): single column everything ── */
+  @media (max-width: 600px) {
+    .container { padding: 20px 14px 60px; }
+    header { margin-bottom: 24px; }
+    .subtitle { font-size: 12px; }
+    .product-input-wrap { margin-bottom: 24px; }
+
+    /* On mobile: octagon on top, scoring below */
+    .main-grid {
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    /* Un-stick the canvas on mobile */
+    .octagon-panel { position: static; }
+
+    #octCanvas { max-width: 320px; }
+
+    .drive-name { font-size: 12px; }
+    .score-display { font-size: 16px; }
+
+    /* Report */
+    .report-hero {
+      padding: 20px 18px;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .report-score-block { text-align: left; }
+    .report-score-num { font-size: 36px; }
+    .report-product-name { font-size: 18px; }
+
+    .report-stats {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .stat-cell { padding: 12px 10px; }
+    .stat-cell-value { font-size: 16px; }
+
+    .report-body { grid-template-columns: 1fr; }
+    .report-section { padding: 16px; }
+
+    .result-bar-row { grid-template-columns: 1fr 30px 80px; gap: 6px; }
+    .result-bar-name { font-size: 10px; }
+
+    .profile-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .profile-card { padding: 10px; }
+    .profile-card-score { font-size: 18px; }
+    .profile-card-desc { font-size: 9px; }
+
+    .report-recommendations { padding: 16px; }
+    .rec-grid { grid-template-columns: 1fr; gap: 10px; }
+
+    .report-conclusion { padding: 18px; }
+    .conclusion-text { font-size: 12px; }
+  }
+
+  /* Submit button */
+  .submit-area {
+    margin-top: 28px;
+    text-align: center;
+  }
+
+  #submitBtn {
+    background: transparent;
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    letter-spacing: 0.2em;
+    padding: 14px 40px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  #submitBtn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--gold);
+    transform: translateX(-100%);
+    transition: transform 0.25s;
+    z-index: 0;
+  }
+
+  #submitBtn:hover::before { transform: translateX(0); }
+  #submitBtn:hover { color: var(--bg); }
+  #submitBtn span { position: relative; z-index: 1; }
+
+  /* Result panel */
+  #resultPanel {
+    display: none;
+    margin-top: 48px;
+  }
+
+  #resultPanel.visible { display: block; animation: fadeIn 0.5s ease; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Report header */
+  .report-hero {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 32px 36px;
+    margin-bottom: 2px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .report-hero-left {}
+
+  .report-eyebrow {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .report-product-name {
+    font-size: 24px;
+    font-weight: 900;
+    color: var(--text);
+    line-height: 1.1;
+    margin-bottom: 6px;
+  }
+
+  .report-date {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  .report-score-block {
+    text-align: right;
+  }
+
+  .report-score-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 52px;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--gold);
+  }
+
+  .report-score-denom {
+    font-family: 'Space Mono', monospace;
+    font-size: 16px;
+    color: var(--muted);
+  }
+
+  .report-score-label {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+    letter-spacing: 0.05em;
+  }
+
+  .report-grade {
+    display: inline-block;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    padding: 3px 10px;
+    margin-top: 6px;
+    border: 1px solid;
+  }
+
+  /* Summary stats strip */
+  .report-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2px;
+    margin-bottom: 2px;
+  }
+
+  .stat-cell {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 16px 18px;
+    text-align: center;
+  }
+
+  .stat-cell-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .stat-cell-value {
+    font-family: 'Space Mono', monospace;
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .stat-cell-sub {
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 3px;
+  }
+
+  /* Two-column report body */
+  .report-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px;
+    margin-bottom: 2px;
+  }
+
+  /* Bar chart section */
+  .report-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 24px;
+  }
+
+  .section-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin-bottom: 18px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .result-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 11px;
+  }
+
+  .result-bar-row {
+    display: grid;
+    grid-template-columns: 140px 32px 1fr;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .result-bar-name {
+    font-size: 11px;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .result-bar-score {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    text-align: right;
+  }
+
+  .result-bar-track {
+    height: 5px;
+    background: var(--border);
+    overflow: hidden;
+  }
+
+  .result-bar-fill {
+    height: 100%;
+    transition: width 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /* Profile analysis */
+  .profile-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 0;
+  }
+
+  .profile-card {
+    border: 1px solid var(--border);
+    padding: 12px 14px;
+    position: relative;
+  }
+
+  .profile-card-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    margin-bottom: 6px;
+  }
+
+  .profile-card-score {
+    font-family: 'Space Mono', monospace;
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .profile-card-bar {
+    height: 3px;
+    background: var(--border);
+    overflow: hidden;
+    margin-bottom: 6px;
+  }
+
+  .profile-card-fill {
+    height: 100%;
+    transition: width 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .profile-card-desc {
+    font-size: 10px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  /* Per-drive recommendations */
+  .report-recommendations {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 24px;
+    margin-bottom: 2px;
+  }
+
+  .rec-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-top: 0;
+  }
+
+  @media (max-width: 700px) {
+    .rec-grid { grid-template-columns: 1fr; }
+  }
+
+  .rec-card {
+    border: 1px solid var(--border);
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .rec-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--color);
+  }
+
+  .rec-card:hover { border-color: var(--color); }
+
+  .rec-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+
+  .rec-card-name {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .rec-score-badge {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 1px 7px;
+    border: 1px solid var(--color);
+    color: var(--color);
+    background: color-mix(in srgb, var(--color) 10%, transparent);
+  }
+
+  .rec-level-tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 0.15em;
+    color: var(--color);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+
+  .rec-card-text {
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.65;
+  }
+
+  .rec-card-text strong {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .rec-actions {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+  }
+
+  .rec-action-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+    font-size: 10px;
+    color: var(--muted);
+    line-height: 1.5;
+    margin-bottom: 4px;
+  }
+
+  .rec-action-item::before {
+    content: '→';
+    color: var(--color);
+    flex-shrink: 0;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    margin-top: 1px;
+  }
+
+  /* Overall conclusion */
+  .report-conclusion {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 28px 32px;
+  }
+
+  .conclusion-text {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.8;
+  }
+
+  .conclusion-text strong { color: var(--text); }
+
+  .insight-tag {
+    display: inline-block;
+    padding: 2px 8px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    margin: 2px 3px;
+    letter-spacing: 0.05em;
+  }
+
+  /* ── Top navigation bar ── */
+  .topbar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    background: rgba(10,10,15,0.92);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    height: 52px;
+  }
+
+  .topbar-brand {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: var(--gold);
+    text-transform: uppercase;
+  }
+
+  .topbar-brand span { color: var(--muted); }
+
+  .topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .topbar-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    padding: 6px 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.18s;
+    white-space: nowrap;
+  }
+
+  .topbar-btn:hover { border-color: var(--gold); color: var(--gold); }
+  .topbar-btn svg { width: 13px; height: 13px; flex-shrink: 0; }
+
+  /* Push container below topbar */
+  .container { padding-top: 72px; }
+
+  @media (max-width: 600px) {
+    .topbar { padding: 0 12px; height: 48px; }
+    .topbar-brand { font-size: 9px; letter-spacing: 0.12em; }
+    .topbar-btn { font-size: 9px; padding: 5px 8px; gap: 4px; }
+    .container { padding-top: 64px; }
+    .topbar-btn .btn-label { display: none; }
+  }
+
+  /* ── FAB action cluster (shown after report generated) ── */
+  .fab-cluster {
+    position: fixed;
+    bottom: 28px;
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+    z-index: 90;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(16px);
+    transition: opacity 0.3s, transform 0.3s;
+  }
+
+  .fab-cluster.visible { opacity: 1; pointer-events: auto; transform: translateY(0); }
+
+  .fab-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    padding: 10px 16px;
+    cursor: pointer;
+    transition: all 0.18s;
+    white-space: nowrap;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+  }
+
+  .fab-btn:hover { border-color: var(--gold); color: var(--gold); }
+  .fab-btn svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+  .fab-btn.wechat:hover { border-color: #07c160; color: #07c160; }
+  .fab-btn.export-img:hover { border-color: var(--accent); color: var(--accent); }
+  .fab-btn.export-pdf:hover { border-color: #e86a6a; color: #e86a6a; }
+
+  /* ── Modal base ── */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s;
+  }
+
+  .modal-overlay.open { opacity: 1; pointer-events: auto; }
+
+  .modal-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    width: 100%;
+    max-width: 440px;
+    max-height: 90vh;
+    overflow-y: auto;
+    transform: translateY(20px) scale(0.97);
+    transition: transform 0.25s;
+    position: relative;
+  }
+
+  .modal-overlay.open .modal-box { transform: translateY(0) scale(1); }
+
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .modal-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: var(--gold);
+    text-transform: uppercase;
+  }
+
+  .modal-close {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-size: 18px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 2px 6px;
+    transition: color 0.15s;
+  }
+
+  .modal-close:hover { color: var(--text); }
+  .modal-body { padding: 24px; }
+
+  /* ── Share modal ── */
+  .share-url-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .share-url-input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    padding: 8px 12px;
+    outline: none;
+    min-width: 0;
+  }
+
+  .share-copy-btn {
+    background: transparent;
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    padding: 8px 14px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+    letter-spacing: 0.1em;
+  }
+
+  .share-copy-btn:hover { background: var(--gold); color: var(--bg); }
+
+  .share-qr-wrap {
+    text-align: center;
+    margin-bottom: 16px;
+  }
+
+  .share-qr-wrap canvas, .share-qr-wrap img {
+    width: 180px; height: 180px;
+    border: 1px solid var(--border);
+    display: block;
+    margin: 0 auto 10px;
+  }
+
+  .share-qr-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+
+  .share-native-btn {
+    width: 100%;
+    background: #07c160;
+    border: none;
+    color: #fff;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    padding: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: opacity 0.15s;
+    margin-top: 8px;
+  }
+
+  .share-native-btn:hover { opacity: 0.88; }
+  .share-divider { text-align: center; font-size: 10px; color: var(--muted); margin: 14px 0; letter-spacing: 0.1em; }
+
+  /* ── About modal ── */
+  .about-logo {
+    text-align: center;
+    padding: 8px 0 20px;
+  }
+
+  .about-logo-mark {
+    font-family: 'Space Mono', monospace;
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--gold);
+    letter-spacing: -0.04em;
+    line-height: 1;
+  }
+
+  .about-logo-sub {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.3em;
+    color: var(--muted);
+    margin-top: 6px;
+    text-transform: uppercase;
+  }
+
+  .about-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 11px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+  }
+
+  .about-row:last-child { border-bottom: none; }
+  .about-key { font-family: 'Space Mono', monospace; font-size: 10px; color: var(--muted); letter-spacing: 0.1em; }
+  .about-val { color: var(--text); font-size: 12px; }
+  .about-val.gold { color: var(--gold); font-family: 'Space Mono', monospace; }
+
+  .about-badge {
+    display: inline-block;
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    border: 1px solid var(--border);
+    padding: 2px 8px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+
+  .about-footer {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--muted);
+    text-align: center;
+    line-height: 1.6;
+    font-family: 'Space Mono', monospace;
+  }
+
+  /* ── Toast notification ── */
+  .toast {
+    position: fixed;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--surface);
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    padding: 10px 20px;
+    z-index: 300;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s, transform 0.2s;
+    white-space: nowrap;
+  }
+
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── Export loading overlay ── */
+  .export-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10,10,15,0.85);
+    z-index: 400;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+
+  .export-overlay.active { opacity: 1; pointer-events: auto; }
+
+  .export-spinner {
+    width: 32px; height: 32px;
+    border: 2px solid var(--border);
+    border-top-color: var(--gold);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .export-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    color: var(--gold);
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Top navigation bar ── -->
+<nav class="topbar">
+  <div class="topbar-brand">Octalysis <span>· Tool</span></div>
+  <div class="topbar-actions">
+    <button class="topbar-btn" id="navShareBtn" style="display:none" onclick="openShareModal()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+      <span class="btn-label">分享</span>
+    </button>
+    <button class="topbar-btn" onclick="openAboutModal()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <span class="btn-label">关于</span>
+    </button>
+  </div>
+</nav>
+
+<!-- ── FAB action cluster ── -->
+<div class="fab-cluster" id="fabCluster">
+  <button class="fab-btn wechat" onclick="openShareModal()">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8.7 10.3a1 1 0 100-2 1 1 0 000 2zm5.1 0a1 1 0 100-2 1 1 0 000 2zM12 2C6.477 2 2 6.19 2 11.35c0 2.83 1.37 5.36 3.53 7.07L4.5 22l3.86-1.93C9.53 20.65 10.74 21 12 21c5.523 0 10-4.19 10-9.35C22 6.19 17.523 2 12 2z"/></svg>
+    <span class="btn-label">分享到微信</span>
+  </button>
+  <button class="fab-btn export-img" onclick="exportImage()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+    <span class="btn-label">导出为图片</span>
+  </button>
+  <button class="fab-btn export-pdf" onclick="exportPDF()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/><polyline points="9 9 10 9 12 9"/></svg>
+    <span class="btn-label">导出为 PDF</span>
+  </button>
+</div>
+
+<!-- ── Share modal ── -->
+<div class="modal-overlay" id="shareModal" onclick="closeModal('shareModal')">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span class="modal-title">分享评估报告</span>
+      <button class="modal-close" onclick="closeModal('shareModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="share-url-row">
+        <input class="share-url-input" id="shareUrlInput" readonly value="请先生成报告" />
+        <button class="share-copy-btn" onclick="copyShareUrl()">复制链接</button>
+      </div>
+      <div class="share-divider">— 或扫描二维码 —</div>
+      <div class="share-qr-wrap">
+        <div id="qrPlaceholder" style="width:180px;height:180px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-family:Space Mono,monospace;font-size:10px;color:var(--muted)">生成报告后显示</div>
+        <div class="share-qr-label">微信扫一扫 · 发送给朋友</div>
+      </div>
+      <button class="share-native-btn" id="nativeShareBtn" onclick="nativeShare()" style="display:none">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8.7 10.3a1 1 0 100-2 1 1 0 000 2zm5.1 0a1 1 0 100-2 1 1 0 000 2zM12 2C6.477 2 2 6.19 2 11.35c0 2.83 1.37 5.36 3.53 7.07L4.5 22l3.86-1.93C9.53 20.65 10.74 21 12 21c5.523 0 10-4.19 10-9.35C22 6.19 17.523 2 12 2z"/></svg>
+        通过系统菜单分享（微信 / 朋友圈）
+      </button>
+      <div style="margin-top:14px;font-family:Space Mono,monospace;font-size:9px;color:var(--muted);line-height:1.6;letter-spacing:0.05em">
+        提示：复制链接后，在微信对话框粘贴发送；或长按二维码图片保存，发至朋友圈。
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── About modal ── -->
+<div class="modal-overlay" id="aboutModal" onclick="closeModal('aboutModal')">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span class="modal-title">关于 · About</span>
+      <button class="modal-close" onclick="closeModal('aboutModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="about-logo">
+        <div class="about-logo-mark">OCT</div>
+        <div class="about-logo-sub">Octalysis Evaluation Tool</div>
+      </div>
+      <div class="about-row">
+        <span class="about-key">PRODUCT</span>
+        <span class="about-val">八角行为模型评估工具</span>
+      </div>
+      <div class="about-row">
+        <span class="about-key">VERSION</span>
+        <span class="about-val gold">v1.3.0</span>
+      </div>
+      <div class="about-row">
+        <span class="about-key">DEVELOPER</span>
+        <span class="about-val">JayWen</span>
+      </div>
+      <div class="about-row">
+        <span class="about-key">FRAMEWORK</span>
+        <span class="about-val">Octalysis · Yu-kai Chou</span>
+      </div>
+      <div class="about-row">
+        <span class="about-key">PLATFORM</span>
+        <span class="about-val">Web · PWA Ready</span>
+      </div>
+      <div class="about-row">
+        <span class="about-key">BUILD</span>
+        <span class="about-val"><span class="about-badge">Standalone HTML5</span></span>
+      </div>
+      <div class="about-row">
+        <span class="about-key">FEATURES</span>
+        <span class="about-val" style="text-align:right;font-size:11px">雷达图 · 专业报告 · 分享 · 导出</span>
+      </div>
+      <div class="about-footer">
+        Built with ♥ by JayWen<br>
+        Octalysis Framework © Yu-kai Chou
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Toast ── -->
+<div class="toast" id="toast"></div>
+
+<!-- ── Export loading overlay ── -->
+<div class="export-overlay" id="exportOverlay">
+  <div class="export-spinner"></div>
+  <div class="export-label" id="exportLabel">正在生成…</div>
+</div>
+
+<div class="container">
+  <header>
+    <div class="title-badge">Octalysis Framework</div>
+    <h1>八角行为<span>模型</span>评估</h1>
+    <p class="subtitle">Yu-kai Chou 游戏化实战框架 · 八大核心驱动力</p>
+  </header>
+
+  <div class="product-input-wrap">
+    <div class="product-input-inner">
+      <span class="product-label">产品名称</span>
+      <input type="text" id="productName" placeholder="输入你要评估的产品…" />
+    </div>
+  </div>
+
+  <div class="main-grid">
+    <!-- Octagon canvas -->
+    <div class="octagon-panel">
+      <div class="panel-label">实时预览</div>
+      <canvas id="octCanvas" width="560" height="560"></canvas>
+    </div>
+
+    <!-- Scoring -->
+    <div class="scoring-panel">
+      <div class="panel-label">八大驱动力评分（0–10）</div>
+      <div class="drives-list" id="drivesList"></div>
+      <div class="submit-area">
+        <button id="submitBtn"><span>✦ 生成评估报告</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Result panel -->
+  <div id="resultPanel">
+    <!-- Hero header -->
+    <div class="report-hero">
+      <div class="report-hero-left">
+        <div class="report-eyebrow">Octalysis Gamification Report</div>
+        <div class="report-product-name" id="reportProductName">—</div>
+        <div class="report-date" id="reportDate">—</div>
+      </div>
+      <div class="report-score-block">
+        <div><span class="report-score-num" id="reportScoreNum">—</span><span class="report-score-denom">/80</span></div>
+        <div class="report-score-label">综合游戏化得分</div>
+        <div class="report-grade" id="reportGrade">—</div>
+      </div>
+    </div>
+
+    <!-- Stats strip -->
+    <div class="report-stats">
+      <div class="stat-cell">
+        <div class="stat-cell-label">平均分</div>
+        <div class="stat-cell-value" id="statAvg" style="color:var(--gold)">—</div>
+        <div class="stat-cell-sub">满分 10 分</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-cell-label">白帽驱动</div>
+        <div class="stat-cell-value" id="statWhite" style="color:#e8c96a">—</div>
+        <div class="stat-cell-sub">积极体验 /40</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-cell-label">黑帽驱动</div>
+        <div class="stat-cell-value" id="statBlack" style="color:#e86a9b">—</div>
+        <div class="stat-cell-sub">紧迫焦虑 /40</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-cell-label">左右脑平衡</div>
+        <div class="stat-cell-value" id="statBalance" style="color:#9b6ae8">—</div>
+        <div class="stat-cell-sub">左脑/右脑</div>
+      </div>
+    </div>
+
+    <!-- Body: bar chart + profile -->
+    <div class="report-body">
+      <div class="report-section">
+        <div class="section-title">驱动力得分排名</div>
+        <div class="result-bars" id="resultBars"></div>
+      </div>
+      <div class="report-section">
+        <div class="section-title">四维人格画像</div>
+        <div class="profile-grid" id="profileGrid"></div>
+      </div>
+    </div>
+
+    <!-- Per-drive recommendations -->
+    <div class="report-recommendations">
+      <div class="section-title">各维度诊断与改进建议</div>
+      <div class="rec-grid" id="recGrid"></div>
+    </div>
+
+    <!-- Conclusion -->
+    <div class="report-conclusion">
+      <div class="section-title">综合诊断结论</div>
+      <div class="conclusion-text" id="conclusionText">—</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DRIVES = [
+  { id: 1, name: "史诗意义与使命感", en: "Epic Meaning & Calling", color: "#e86a6a", desc: "用户感到参与某件比自己更伟大的事物", angle: 90 },
+  { id: 2, name: "进步与成就感",      en: "Development & Accomplishment", color: "#e8a06a", desc: "内在驱动，克服挑战、积累技能的成就感", angle: 45 },
+  { id: 3, name: "创意赋能与反馈",    en: "Empowerment of Creativity", color: "#e8c96a", desc: "用户可以反复运用创造力，探索并获得反馈", angle: 0 },
+  { id: 4, name: "所有权与拥有感",    en: "Ownership & Possession", color: "#a0e86a", desc: "用户感受到拥有某物，并希望增强或保护它", angle: 315 },
+  { id: 5, name: "社交影响与关联",    en: "Social Influence & Relatedness", color: "#6ae8c9", desc: "社会元素驱动：导师、竞争、嫉妒、陪伴", angle: 270 },
+  { id: 6, name: "稀缺性与渴望感",    en: "Scarcity & Impatience", color: "#6aa0e8", desc: "想要某件得不到或稀缺的东西", angle: 225 },
+  { id: 7, name: "未知性与好奇心",    en: "Unpredictability & Curiosity", color: "#9b6ae8", desc: "想知道接下来会发生什么，好奇心驱动", angle: 180 },
+  { id: 8, name: "亏损与逃避心理",    en: "Loss & Avoidance", color: "#e86aa0", desc: "避免失去已有的东西，或规避负面结果", angle: 135 },
+];
+
+const scores = Array(8).fill(5);
+
+// Build UI
+const list = document.getElementById('drivesList');
+DRIVES.forEach((d, i) => {
+  const card = document.createElement('div');
+  card.className = 'drive-card';
+  card.style.setProperty('--color', d.color);
+  card.innerHTML = `
+    <div class="drive-header">
+      <div class="drive-info">
+        <div class="drive-num">CD${d.id} · ${d.en}</div>
+        <div class="drive-name">${d.name}</div>
+        <div class="drive-desc">${d.desc}</div>
+      </div>
+      <div class="score-display" id="score-${i}">5</div>
+    </div>
+    <div class="slider-wrap">
+      <input type="range" min="0" max="10" step="1" value="5" id="range-${i}" />
+      <div class="slider-scale">
+        <span>0</span><span>1</span><span>2</span><span>3</span><span>4</span>
+        <span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span>
+      </div>
+    </div>
+  `;
+  list.appendChild(card);
+
+  const range = card.querySelector(`#range-${i}`);
+  const scoreEl = card.querySelector(`#score-${i}`);
+
+  // Style the filled track
+  const updateTrack = (v) => {
+    range.style.background = `linear-gradient(to right, ${d.color} ${v*10}%, var(--border) ${v*10}%)`;
+  };
+  updateTrack(5);
+
+  range.addEventListener('input', () => {
+    scores[i] = parseInt(range.value);
+    scoreEl.textContent = range.value;
+    updateTrack(parseInt(range.value));
+    drawOctagon(scores);
+  });
+});
+
+// Canvas drawing - fully responsive
+const canvas = document.getElementById('octCanvas');
+const ctx = canvas.getContext('2d');
+
+function getCanvasParams() {
+  const size = canvas.offsetWidth || 320;
+  const dpr = window.devicePixelRatio || 1;
+  return {
+    size,
+    dpr,
+    CX: size / 2,
+    CY: size / 2,
+    R: size * 0.34,
+    labelR: size * 0.46,
+    fontSize: Math.max(10, size * 0.024),
+    dotR: Math.max(4, size * 0.01),
+  };
+}
+
+function resizeCanvas() {
+  const p = getCanvasParams();
+  canvas.width = p.size * p.dpr;
+  canvas.height = p.size * p.dpr;
+  ctx.scale(p.dpr, p.dpr);
+}
+
+function angleToXY(deg, r, CX, CY) {
+  const rad = (deg - 90) * Math.PI / 180;
+  return [CX + r * Math.cos(rad), CY + r * Math.sin(rad)];
+}
+
+function drawOctagon(vals) {
+  resizeCanvas();
+  const { size, CX, CY, R, labelR, fontSize, dotR } = getCanvasParams();
+  ctx.clearRect(0, 0, size, size);
+
+  // Background rings
+  for (let ring = 2; ring <= 10; ring += 2) {
+    ctx.beginPath();
+    for (let i = 0; i < 8; i++) {
+      const [x, y] = angleToXY(DRIVES[i].angle, R * ring / 10, CX, CY);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.strokeStyle = ring === 10 ? 'rgba(232,201,106,0.15)' : 'rgba(255,255,255,0.05)';
+    ctx.lineWidth = ring === 10 ? 1.5 : 0.8;
+    ctx.stroke();
+  }
+
+  // Spokes
+  for (let i = 0; i < 8; i++) {
+    ctx.beginPath();
+    ctx.moveTo(CX, CY);
+    const [x, y] = angleToXY(DRIVES[i].angle, R, CX, CY);
+    ctx.lineTo(x, y);
+    ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+  }
+
+  // Score polygon - gradient fill
+  ctx.beginPath();
+  for (let i = 0; i < 8; i++) {
+    const [x, y] = angleToXY(DRIVES[i].angle, R * vals[i] / 10, CX, CY);
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+
+  const grad = ctx.createRadialGradient(CX, CY, 0, CX, CY, R);
+  grad.addColorStop(0, 'rgba(232,201,106,0.3)');
+  grad.addColorStop(0.5, 'rgba(106,155,232,0.15)');
+  grad.addColorStop(1, 'rgba(155,106,232,0.1)');
+  ctx.fillStyle = grad;
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(232,201,106,0.6)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Score dots
+  for (let i = 0; i < 8; i++) {
+    const sv = vals[i];
+    const [sx, sy] = angleToXY(DRIVES[i].angle, R * sv / 10, CX, CY);
+    ctx.beginPath();
+    ctx.arc(sx, sy, dotR, 0, Math.PI * 2);
+    ctx.fillStyle = DRIVES[i].color;
+    ctx.fill();
+    ctx.strokeStyle = '#0a0a0f';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
+  // Labels
+  ctx.font = `700 ${fontSize}px "Noto Serif SC", serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const lineH = fontSize * 1.25;
+
+  for (let i = 0; i < 8; i++) {
+    const d = DRIVES[i];
+    const [lx, ly] = angleToXY(d.angle, labelR, CX, CY);
+    ctx.fillStyle = d.color;
+    const parts = d.name.split('与');
+    if (parts.length > 1) {
+      ctx.fillText(parts[0] + '与', lx, ly - lineH * 0.5);
+      ctx.fillText(parts[1], lx, ly + lineH * 0.5);
+    } else {
+      ctx.fillText(d.name, lx, ly);
+    }
+
+    // Score near dot
+    const [sdx, sdy] = angleToXY(d.angle, R * vals[i] / 10 + dotR * 2.5, CX, CY);
+    ctx.font = `700 ${Math.max(9, fontSize * 0.85)}px "Space Mono", monospace`;
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.fillText(vals[i], sdx, sdy);
+    ctx.font = `700 ${fontSize}px "Noto Serif SC", serif`;
+  }
+
+  // Center label
+  ctx.font = `700 ${Math.max(9, fontSize * 0.9)}px "Space Mono", monospace`;
+  ctx.fillStyle = 'rgba(232,201,106,0.5)';
+  ctx.fillText('OCTALYSIS', CX, CY);
+}
+
+drawOctagon(scores);
+
+// Redraw on resize (handles orientation change, window resize)
+if (window.ResizeObserver) {
+  new ResizeObserver(() => drawOctagon(scores)).observe(canvas);
+} else {
+  window.addEventListener('resize', () => drawOctagon(scores));
+}
+
+// Per-drive recommendation data
+const DRIVE_ADVICE = [
+  { // CD1 史诗意义
+    high: { level: "✦ 优势维度", summary: "用户对产品使命感认同度强，存在强烈的「选民效应」。", actions: ["强化社区叙事，持续输出产品背后的使命故事", "设计「创始用户」或「先锋成员」等稀有身份标签", "让用户成为品牌故事的讲述者，增强传教士效应"] },
+    mid:  { level: "◈ 待提升维度", summary: "产品有一定使命感基础，但用户认同尚未形成规模。", actions: ["提炼并明确产品的核心使命宣言，嵌入 onboarding 流程", "通过真实用户故事和社会影响力案例增强「意义感」", "设计荣誉墙、影响力报告等让用户看见自身贡献"] },
+    low:  { level: "⚠ 薄弱维度", summary: "产品缺乏超越功能本身的意义叙事，用户粘性依赖外部激励。", actions: ["从零构建品牌使命故事，与用户群体的核心价值观绑定", "引入「共同敌人」叙事或社会问题视角，创造使命认同", "建立用户贡献可视化机制，让每次使用都与更大目标相连"] }
+  },
+  { // CD2 进步成就
+    high: { level: "✦ 优势维度", summary: "进度与成就系统设计完善，用户能清晰感知自身成长轨迹。", actions: ["引入进阶挑战机制，防止熟练用户因无敌感而流失", "设计里程碑庆典时刻，强化关键成就的仪式感", "提供个人成长报告，量化用户在产品内的能力提升"] },
+    mid:  { level: "◈ 待提升维度", summary: "基础进度反馈存在，但成就感峰值体验不够强烈。", actions: ["优化进度条与等级系统的视觉表现力，增强「即将升级」的紧张感", "为每个核心操作设计即时正向反馈（动效、音效、数字弹出）", "设计阶梯式难度曲线，确保用户始终处于「心流区间」"] },
+    low:  { level: "⚠ 薄弱维度", summary: "产品缺乏系统性的进度与成就机制，用户难以感知自身成长。", actions: ["引入明确的等级/积分体系，为核心行为赋予进度反馈", "设计新手引导任务链，让用户在 Day 1 就体验到成就感", "建立「技能树」或成就徽章体系，使成长路径可视化"] }
+  },
+  { // CD3 创意赋能
+    high: { level: "✦ 优势维度", summary: "用户创造力得到充分释放，产品具备强大的个性化表达空间。", actions: ["构建 UGC 展示与传播机制，让优质创作获得社区曝光", "提供更高阶的创作工具，满足资深用户的进阶需求", "举办创意竞赛或挑战赛，周期性激活创作热情"] },
+    mid:  { level: "◈ 待提升维度", summary: "存在一定创作空间，但工具深度或分享机制不够完善。", actions: ["降低创作门槛，提供模板和辅助工具加速创作起步", "完善作品分享与互动功能，为创作行为提供社会认可", "设计创作成就体系，奖励高频、高质量的创作行为"] },
+    low:  { level: "⚠ 薄弱维度", summary: "产品以消费型体验为主，用户几乎没有主动创造的机会。", actions: ["引入个性化定制功能，让用户能「改造」自己的使用空间", "开放内容共创入口，如评论精选、用例展示、用户故事征集", "设计简单的创作任务，如填写个人简介、自定义主题色等低门槛操作"] }
+  },
+  { // CD4 所有权
+    high: { level: "✦ 优势维度", summary: "用户对产品内资产/数据/关系的所有感强，迁移成本高。", actions: ["进一步丰富可积累资产的类型（历史、收藏、自定义配置）", "强化「损失规避」提示，让用户意识到切换成本", "设计资产继承或导出功能，反向增强留存意愿"] },
+    mid:  { level: "◈ 待提升维度", summary: "用户有初步的所有感，但价值积累的感知不够明显。", actions: ["增加「我的资产」聚合页面，让用户直观看到自己的积累", "引入虚拟货币或积分体系，将行为转化为可见资产", "设计个人主页或档案页，展示用户在产品内的「财富」"] },
+    low:  { level: "⚠ 薄弱维度", summary: "用户与产品之间缺乏资产绑定，替换成本极低。", actions: ["引入个性化数据积累机制（偏好记录、历史轨迹、专属推荐）", "设计虚拟物品或成就收藏系统，创造「不舍得离开」的心理账户", "提供专属身份标识（称号、头衔、专属皮肤），强化归属感"] }
+  },
+  { // CD5 社交影响
+    high: { level: "✦ 优势维度", summary: "社交网络效应显著，用户的社交行为正在驱动增长飞轮。", actions: ["设计更多协作型任务，将社交行为与核心功能深度结合", "强化「社交证明」展示，如好友使用数据、社区热榜", "建立导师/学徒机制，让资深用户带动新用户留存"] },
+    mid:  { level: "◈ 待提升维度", summary: "社交功能基础存在，但病毒传播系数和社交粘性有待提升。", actions: ["优化邀请机制，为邀请人和被邀请人设计双向激励", "增加实时协作或竞争场景，提高用户间的互动频次", "建立社区排行榜或互评机制，激活社交比较动机"] },
+    low:  { level: "⚠ 薄弱维度", summary: "产品几乎无社交层，用户体验是孤立的个人行为。", actions: ["引入最低限度的社交元素（公开成就、好友进度可见）", "设计基于现有关系链的功能入口（微信/邮件邀请）", "构建轻量社区（话题广场、用户秀场），降低社交参与门槛"] }
+  },
+  { // CD6 稀缺渴望
+    high: { level: "✦ 优势维度", summary: "稀缺机制运作良好，用户对限定内容保持持续渴望感。", actions: ["保持稀缺节奏感，避免频繁触发导致用户脱敏", "设计「预告机制」，让用户对即将到来的稀缺内容产生期待", "引入「资格稀缺」而非仅「数量稀缺」，提升高质量用户的身份认同"] },
+    mid:  { level: "◈ 待提升维度", summary: "存在一定稀缺设计，但渴望感的峰值体验需要加强。", actions: ["引入限时活动和季节性内容，制造「错过就没有」的紧迫感", "设计排队等候或预约机制（如早鸟资格、内测名额）", "展示实时库存/名额数量，以数字变化激发紧迫情绪"] },
+    low:  { level: "⚠ 薄弱维度", summary: "产品内容/功能唾手可得，缺乏稀缺感，用户参与动机较低。", actions: ["引入会员专属内容或「仅限受邀」功能区，建立内外差异", "设计限量奖励活动（首100名完成任务的用户获特殊徽章）", "将高价值功能与达成特定成就挂钩，创造「解锁」感"] }
+  },
+  { // CD7 未知好奇
+    high: { level: "✦ 优势维度", summary: "产品的随机性和惊喜机制设计出色，持续激发用户探索欲。", actions: ["维持「每次打开都有新发现」的内容运营节奏", "设计隐藏彩蛋和神秘任务，奖励深度探索的用户", "利用个性化算法提升意外发现的质量，防止随机感退化为噪音"] },
+    mid:  { level: "◈ 待提升维度", summary: "存在一定的不确定性元素，但惊喜密度和质量有提升空间。", actions: ["在核心流程中嵌入随机奖励节点（如登录惊喜、操作彩蛋）", "设计神秘礼盒、盲盒式内容包，利用开箱期待感提升活跃度", "通过推送「你可能不知道」类内容，激发用户对未探索区域的好奇"] },
+    low:  { level: "⚠ 薄弱维度", summary: "产品体验完全可预期，缺乏任何惊喜感，用户容易感到单调。", actions: ["引入每日随机任务或「今日彩蛋」机制，打破可预测性", "设计渐进解锁的隐藏内容，激励用户持续探索", "在关键时间节点（周年日、节假日）触发特殊互动，制造记忆点"] }
+  },
+  { // CD8 亏损逃避
+    high: { level: "✦ 优势维度", summary: "损失规避机制有效，但需警惕过度使用导致用户焦虑和负面情绪。", actions: ["平衡黑帽与白帽驱动力比例，避免用户因压迫感过强而流失", "将「损失提醒」与「积极奖励」配合使用，维持用户正向情绪", "定期审查通知频率，确保提醒是关怀而非骚扰"] },
+    mid:  { level: "◈ 待提升维度", summary: "损失规避设计基础存在，但激活频次和场景设计有待优化。", actions: ["在用户长期未活跃时发送「你的XX即将过期」提醒", "设计连续签到/打卡中断警告，增强习惯养成动机", "引入「保护期」机制（如连续天数保护卡），让中断代价感知更强"] },
+    low:  { level: "⚠ 薄弱维度", summary: "产品缺乏任何损失规避机制，用户离开毫无心理成本。", actions: ["引入连续登录奖励+断签惩罚的组合机制", "为用户积累的虚拟资产设置「使用期限」，营造维护动机", "在关键流失节点（如7日未登录）发送有温度的召回文案"] }
+  }
+];
+
+function getAdvice(driveIndex, score) {
+  const a = DRIVE_ADVICE[driveIndex];
+  if (score >= 7) return a.high;
+  if (score >= 4) return a.mid;
+  return a.low;
+}
+
+// Submit
+document.getElementById('submitBtn').addEventListener('click', () => {
+  const name = document.getElementById('productName').value.trim() || '未命名产品';
+  const total = scores.reduce((a, b) => a + b, 0);
+  const avg = (total / 8).toFixed(1);
+
+  drawOctagon(scores);
+
+  const panel = document.getElementById('resultPanel');
+  panel.classList.add('visible');
+
+  // Hero
+  document.getElementById('reportProductName').textContent = name;
+  document.getElementById('reportDate').textContent = `评估日期：${new Date().toLocaleDateString('zh-CN', {year:'numeric',month:'long',day:'numeric'})}`;
+  document.getElementById('reportScoreNum').textContent = total;
+
+  const gradeEl = document.getElementById('reportGrade');
+  if (total >= 64) { gradeEl.textContent = 'S级 · 游戏化标杆'; gradeEl.style.color='var(--gold)'; gradeEl.style.borderColor='var(--gold)'; }
+  else if (total >= 48) { gradeEl.textContent = 'A级 · 设计优秀'; gradeEl.style.color='#a0e86a'; gradeEl.style.borderColor='#a0e86a'; }
+  else if (total >= 32) { gradeEl.textContent = 'B级 · 基础完备'; gradeEl.style.color='var(--accent)'; gradeEl.style.borderColor='var(--accent)'; }
+  else { gradeEl.textContent = 'C级 · 需全面优化'; gradeEl.style.color='#e86a6a'; gradeEl.style.borderColor='#e86a6a'; }
+
+  // Stats
+  const whiteCD = scores[0] + scores[1] + scores[2] + scores[3];
+  const blackCD = scores[4] + scores[5] + scores[6] + scores[7];
+  const leftBrain = scores[1] + scores[3] + scores[5] + scores[7];
+  const rightBrain = scores[0] + scores[2] + scores[4] + scores[6];
+  document.getElementById('statAvg').textContent = avg;
+  document.getElementById('statWhite').textContent = whiteCD;
+  document.getElementById('statBlack').textContent = blackCD;
+  document.getElementById('statBalance').textContent = `${leftBrain}/${rightBrain}`;
+
+  // Bar chart
+  const bars = document.getElementById('resultBars');
+  bars.innerHTML = '';
+  const sorted = [...DRIVES].map((d, i) => ({ ...d, score: scores[i] })).sort((a, b) => b.score - a.score);
+  sorted.forEach(d => {
+    const row = document.createElement('div');
+    row.className = 'result-bar-row';
+    row.innerHTML = `
+      <div class="result-bar-name">${d.name}</div>
+      <div class="result-bar-score">${d.score}/10</div>
+      <div class="result-bar-track">
+        <div class="result-bar-fill" style="width:0%;background:${d.color}"></div>
+      </div>
+    `;
+    bars.appendChild(row);
+    setTimeout(() => row.querySelector('.result-bar-fill').style.width = d.score * 10 + '%', 60);
+  });
+
+  // Profile quadrants
+  const profileGrid = document.getElementById('profileGrid');
+  const profiles = [
+    { label: '白帽驱动', desc: '史诗意义、成就、创意、所有权。来自内在动机的正向参与。', score: whiteCD, max: 40, color: '#e8c96a' },
+    { label: '黑帽驱动', desc: '社交影响、稀缺、好奇、规避损失。制造紧迫感与外部压力。', score: blackCD, max: 40, color: '#e86a9b' },
+    { label: '左脑（外在）', desc: '成就、所有权、稀缺、规避损失。逻辑性、目标导向的驱动。', score: leftBrain, max: 40, color: '#6aa0e8' },
+    { label: '右脑（内在）', desc: '史诗意义、创意、社交、好奇心。情感性、创造性的驱动。', score: rightBrain, max: 40, color: '#9b6ae8' },
+  ];
+  profileGrid.innerHTML = profiles.map(p => `
+    <div class="profile-card">
+      <div class="profile-card-label">${p.label}</div>
+      <div class="profile-card-score" style="color:${p.color}">${p.score}<span style="font-size:12px;color:var(--muted)">/${p.max}</span></div>
+      <div class="profile-card-bar"><div class="profile-card-fill" style="width:0%;background:${p.color}" data-w="${p.score/p.max*100}%"></div></div>
+      <div class="profile-card-desc">${p.desc}</div>
+    </div>
+  `).join('');
+  setTimeout(() => {
+    profileGrid.querySelectorAll('.profile-card-fill').forEach(el => {
+      el.style.width = el.dataset.w;
+    });
+  }, 80);
+
+  // Per-drive recommendations
+  const recGrid = document.getElementById('recGrid');
+  recGrid.innerHTML = DRIVES.map((d, i) => {
+    const advice = getAdvice(i, scores[i]);
+    return `
+      <div class="rec-card" style="--color:${d.color}">
+        <div class="rec-card-top">
+          <div class="rec-card-name">CD${d.id} · ${d.name}</div>
+          <div class="rec-score-badge">${scores[i]}/10</div>
+        </div>
+        <div class="rec-level-tag">${advice.level}</div>
+        <div class="rec-card-text">${advice.summary}</div>
+        <div class="rec-actions">
+          ${advice.actions.map(a => `<div class="rec-action-item">${a}</div>`).join('')}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Conclusion
+  const weakDrives = DRIVES.filter((d, i) => scores[i] < 4);
+  const strongDrives = DRIVES.filter((d, i) => scores[i] >= 7);
+  const isBalanced = Math.abs(whiteCD - blackCD) <= 8;
+  const dominantHat = whiteCD >= blackCD ? '白帽' : '黑帽';
+
+  let conclusion = `<strong>${name}</strong> 的游戏化综合得分为 <strong>${total}/80</strong>（均分 ${avg}），`;
+  if (total >= 64) conclusion += '整体设计达到行业标杆水准，八大核心驱动力均有较好覆盖。';
+  else if (total >= 48) conclusion += '游戏化设计整体优秀，具备扎实的用户参与基础，在部分维度仍有突破空间。';
+  else if (total >= 32) conclusion += '游戏化基础架构基本完备，但各驱动力的激活深度参差不齐，需要针对性优化。';
+  else conclusion += '游戏化体系尚处于初级阶段，用户参与主要依赖产品本身的功能价值，亟需系统性的游戏化设计介入。';
+
+  conclusion += `<br><br>`;
+  conclusion += `从驱动力结构看，产品以 <strong>${dominantHat}驱动</strong> 为主（白帽 ${whiteCD}/40，黑帽 ${blackCD}/40）。`;
+  conclusion += isBalanced ? '白帽与黑帽的比例较为均衡，用户既有内在成长动机，又有适度的外部压力推动，体验张力良好。' 
+    : whiteCD > blackCD ? '白帽占比明显偏高，用户体验积极正向，但可适当增加稀缺性、社交竞争等黑帽元素以提升短期活跃。'
+    : '黑帽占比偏高，短期促活效果较强，但需警惕用户因压迫感积累而产生疲劳与流失，建议强化使命感和成就感等白帽元素。';
+
+  if (strongDrives.length > 0) {
+    conclusion += `<br><br><strong>核心优势：</strong>${strongDrives.map(d=>`<span class="insight-tag" style="background:${d.color}22;color:${d.color};border:1px solid ${d.color}40">${d.name}</span>`).join('')}这些维度已构成产品的游戏化护城河，建议持续强化并与产品核心功能深度融合。`;
+  }
+  if (weakDrives.length > 0) {
+    conclusion += `<br><br><strong>优先攻坚：</strong>${weakDrives.map(d=>`<span class="insight-tag" style="background:${d.color}22;color:${d.color};border:1px solid ${d.color}40">${d.name}</span>`).join('')}这些维度得分偏低，是当前游戏化设计的最大缺口，建议优先参考上方改进建议逐一落地。`;
+  }
+
+  document.getElementById('conclusionText').innerHTML = conclusion;
+
+  // Show FAB cluster and nav share button after report is generated
+  document.getElementById('fabCluster').classList.add('visible');
+  document.getElementById('navShareBtn').style.display = 'flex';
+
+  // Build share URL with score data encoded in hash
+  buildShareUrl();
+
+  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+
+// ── Share URL builder ──
+function buildShareUrl() {
+  const name = document.getElementById('productName').value.trim() || '未命名产品';
+  const scoreStr = scores.join(',');
+  const encoded = encodeURIComponent(name) + '|' + scoreStr;
+  const hash = '#r=' + btoa(unescape(encodeURIComponent(encoded)));
+  const url = location.origin + location.pathname + hash;
+  document.getElementById('shareUrlInput').value = url;
+  renderQR(url);
+}
+
+// ── Restore state from URL hash ──
+(function restoreFromHash() {
+  try {
+    const hash = location.hash;
+    if (!hash.startsWith('#r=')) return;
+    const decoded = decodeURIComponent(escape(atob(hash.slice(3))));
+    const [name, scoreStr] = decoded.split('|');
+    const restored = scoreStr.split(',').map(Number);
+    if (restored.length !== 8 || restored.some(isNaN)) return;
+    document.getElementById('productName').value = name;
+    restored.forEach((v, i) => {
+      scores[i] = v;
+      const range = document.getElementById(`range-${i}`);
+      const scoreEl = document.getElementById(`score-${i}`);
+      if (range && scoreEl) {
+        range.value = v;
+        scoreEl.textContent = v;
+        const color = DRIVES[i].color;
+        range.style.background = `linear-gradient(to right, ${color} ${v*10}%, #2a2a3a ${v*10}%)`;
+      }
+    });
+    drawOctagon(scores);
+    // Auto-trigger report generation after short delay
+    setTimeout(() => document.getElementById('submitBtn').click(), 400);
+  } catch(e) {}
+})();
+
+// ── QR code renderer (using Google Charts API as fallback, pure-JS via qrcode.js from CDN) ──
+function renderQR(url) {
+  const wrap = document.getElementById('qrPlaceholder');
+  // Use QRCode.js if loaded, else use Google Charts image API
+  if (window.QRCode) {
+    wrap.innerHTML = '';
+    wrap.style.cssText = 'width:180px;height:180px;border:1px solid #2a2a3a;display:block;margin:0 auto 10px;background:#fff;padding:8px;';
+    new QRCode(wrap, { text: url, width: 164, height: 164, colorDark: '#0a0a0f', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+  } else {
+    const encoded = encodeURIComponent(url);
+    wrap.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encoded}&color=0a0a0f&bgcolor=ffffff" style="width:180px;height:180px;border:1px solid #2a2a3a;display:block;margin:0 auto 10px;" alt="QR Code" />`;
+  }
+  // Show native share button if Web Share API is available
+  if (navigator.share) {
+    document.getElementById('nativeShareBtn').style.display = 'flex';
+  }
+}
+
+// ── Modal helpers ──
+function openShareModal() { document.getElementById('shareModal').classList.add('open'); }
+function openAboutModal() { document.getElementById('aboutModal').classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// ── Copy URL ──
+function copyShareUrl() {
+  const val = document.getElementById('shareUrlInput').value;
+  if (val === '请先生成报告') { showToast('请先生成评估报告'); return; }
+  navigator.clipboard.writeText(val).then(() => showToast('✓ 链接已复制，可粘贴到微信发送')).catch(() => {
+    document.getElementById('shareUrlInput').select();
+    document.execCommand('copy');
+    showToast('✓ 链接已复制');
+  });
+}
+
+// ── Native Web Share (iOS / Android) ──
+function nativeShare() {
+  const url = document.getElementById('shareUrlInput').value;
+  const name = document.getElementById('productName').value.trim() || '未命名产品';
+  navigator.share({ title: `${name} · 八角行为模型评估`, text: '我用八角模型评估了一款产品，来看看结果：', url }).catch(() => {});
+}
+
+// ── Toast ──
+function showToast(msg, duration = 2400) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), duration);
+}
+
+// ── Export loading overlay ──
+function showExportOverlay(label) {
+  document.getElementById('exportLabel').textContent = label;
+  document.getElementById('exportOverlay').classList.add('active');
+}
+function hideExportOverlay() {
+  document.getElementById('exportOverlay').classList.remove('active');
+}
+
+// ── Export as Image (html2canvas) ──
+async function exportImage() {
+  showExportOverlay('正在生成图片…');
+  try {
+    if (!window.html2canvas) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+    const target = document.getElementById('resultPanel');
+    const canvas = await html2canvas(target, {
+      backgroundColor: '#0a0a0f',
+      scale: 2,
+      useCORS: true,
+      logging: false,
+    });
+    const link = document.createElement('a');
+    const name = document.getElementById('productName').value.trim() || '八角评估报告';
+    link.download = `${name}-octalysis.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    showToast('✓ 图片已保存');
+  } catch(e) {
+    showToast('图片生成失败，请重试');
+    console.error(e);
+  }
+  hideExportOverlay();
+}
+
+// ── Export as PDF (jsPDF + html2canvas) ──
+async function exportPDF() {
+  showExportOverlay('正在生成 PDF…');
+  try {
+    if (!window.html2canvas) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+    if (!window.jspdf) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+    const { jsPDF } = window.jspdf;
+    const target = document.getElementById('resultPanel');
+    const canvas = await html2canvas(target, {
+      backgroundColor: '#0a0a0f',
+      scale: 2,
+      useCORS: true,
+      logging: false,
+    });
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const imgW = canvas.width;
+    const imgH = canvas.height;
+    const ratio = pageW / (imgW / 2 * 0.2645); // px to mm
+    const renderedH = (imgH / 2) * 0.2645 * (pageW / ((imgW / 2) * 0.2645));
+    let y = 0;
+    // Multi-page support
+    while (y < renderedH) {
+      if (y > 0) pdf.addPage();
+      pdf.addImage(imgData, 'JPEG', 0, -y, pageW, renderedH);
+      y += pageH;
+    }
+    const name = document.getElementById('productName').value.trim() || '八角评估报告';
+    pdf.save(`${name}-octalysis.pdf`);
+    showToast('✓ PDF 已保存');
+  } catch(e) {
+    showToast('PDF 生成失败，请重试');
+    console.error(e);
+  }
+  hideExportOverlay();
+}
+
+// ── Dynamic script loader ──
+function loadScript(src) {
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+}
+
+// Preload QRCode.js quietly
+loadScript('https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js').catch(() => {});
+
+</script>
+</body>
+</html>
