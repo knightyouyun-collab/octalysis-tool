@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>八角行为模型评估工具</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700;900&family=Space+Mono:wght@400;700&display=swap');
@@ -853,7 +852,6 @@
 
   .fab-btn.wechat:hover { border-color: #07c160; color: #07c160; }
   .fab-btn.export-img:hover { border-color: var(--accent); color: var(--accent); }
-  .fab-btn.export-pdf:hover { border-color: #e86a6a; color: #e86a6a; }
 
   /* ── Modal base ── */
   .modal-overlay {
@@ -1134,10 +1132,6 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
     <span class="btn-label">导出为图片</span>
   </button>
-  <button class="fab-btn export-pdf" onclick="exportPDF()">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/><polyline points="9 9 10 9 12 9"/></svg>
-    <span class="btn-label">导出为 PDF</span>
-  </button>
 </div>
 
 <!-- ── Share modal ── -->
@@ -1157,9 +1151,9 @@
         <div id="qrPlaceholder" style="width:180px;height:180px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-family:Space Mono,monospace;font-size:10px;color:var(--muted)">生成报告后显示</div>
         <div class="share-qr-label">微信扫一扫 · 发送给朋友</div>
       </div>
-      <button class="share-native-btn" id="nativeShareBtn" onclick="nativeShare()" style="display:none">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8.7 10.3a1 1 0 100-2 1 1 0 000 2zm5.1 0a1 1 0 100-2 1 1 0 000 2zM12 2C6.477 2 2 6.19 2 11.35c0 2.83 1.37 5.36 3.53 7.07L4.5 22l3.86-1.93C9.53 20.65 10.74 21 12 21c5.523 0 10-4.19 10-9.35C22 6.19 17.523 2 12 2z"/></svg>
-        通过系统菜单分享（微信 / 朋友圈）
+      <button class="share-native-btn" id="nativeShareBtn" onclick="shareMoments()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8.56 2.75c4.37 6.03 6.02 9.42 8.03 17.72m2.54-15.38c-3.72 4.35-8.94 5.46-16.88 5.15m19.5 1.9c-3.5-.93-6.63-.82-8.94 0-2.58.92-5.01 2.86-7.44 6.32"/></svg>
+        分享到朋友圈
       </button>
       <div style="margin-top:14px;font-family:Space Mono,monospace;font-size:9px;color:var(--muted);line-height:1.6;letter-spacing:0.05em">
         提示：复制链接后，在微信对话框粘贴发送；或长按二维码图片保存，发至朋友圈。
@@ -1186,7 +1180,7 @@
       </div>
       <div class="about-row">
         <span class="about-key">VERSION</span>
-        <span class="about-val gold">v1.6.2</span>
+        <span class="about-val gold">v1.6.5</span>
       </div>
       <div class="about-row">
         <span class="about-key">DEVELOPER</span>
@@ -1230,7 +1224,7 @@
     <div class="title-badge">Octalysis Framework</div>
     <h1>八角行为<span>模型</span>评估</h1>
     <p class="subtitle">Yu-kai Chou 游戏化实战框架 · 八大核心驱动力</p>
-    <p class="creator-tag">Created by JayWen &nbsp;·&nbsp; v1.6.2</p>
+    <p class="creator-tag">Created by JayWen &nbsp;·&nbsp; v1.6.5</p>
   </header>
 
   <div class="product-input-wrap">
@@ -1694,8 +1688,9 @@ document.getElementById('submitBtn').addEventListener('click', () => {
 function buildShareUrl() {
   const name = document.getElementById('productName').value.trim() || '未命名产品';
   const scoreStr = scores.join(',');
-  const encoded = encodeURIComponent(name) + '|' + scoreStr;
-  const hash = '#r=' + btoa(unescape(encodeURIComponent(encoded)));
+  // Encode: base64(name + '|' + scores), using UTF-8 safe btoa
+  const raw = name + '|' + scoreStr;
+  const hash = '#r=' + btoa(unescape(encodeURIComponent(raw)));
   const url = location.origin + location.pathname + hash;
   document.getElementById('shareUrlInput').value = url;
   renderQR(url);
@@ -1706,8 +1701,12 @@ function buildShareUrl() {
   try {
     const hash = location.hash;
     if (!hash.startsWith('#r=')) return;
-    const decoded = decodeURIComponent(escape(atob(hash.slice(3))));
-    const [name, scoreStr] = decoded.split('|');
+    // Decode: reverse of btoa(unescape(encodeURIComponent(raw)))
+    const raw = decodeURIComponent(escape(atob(hash.slice(3))));
+    const pipeIdx = raw.indexOf('|');
+    if (pipeIdx === -1) return;
+    const name = raw.slice(0, pipeIdx);
+    const scoreStr = raw.slice(pipeIdx + 1);
     const restored = scoreStr.split(',').map(Number);
     if (restored.length !== 8 || restored.some(isNaN)) return;
     document.getElementById('productName').value = name;
@@ -1723,9 +1722,8 @@ function buildShareUrl() {
       }
     });
     drawOctagon(scores);
-    // Auto-trigger report generation after short delay
     setTimeout(() => document.getElementById('submitBtn').click(), 400);
-  } catch(e) {}
+  } catch(e) { console.error('restoreFromHash error:', e); }
 })();
 
 // ── QR code renderer (using Google Charts API as fallback, pure-JS via qrcode.js from CDN) ──
@@ -1765,6 +1763,8 @@ function renderQR(url) {
 
   if (navigator.share) {
     document.getElementById('nativeShareBtn').style.display = 'flex';
+  } else {
+    document.getElementById('nativeShareBtn').style.display = 'flex';
   }
 }
 
@@ -1784,11 +1784,164 @@ function copyShareUrl() {
   });
 }
 
-// ── Native Web Share (iOS / Android) ──
+// ── Share to WeChat Moments: generate a shareable card image ──
+async function shareMoments() {
+  const url = document.getElementById('shareUrlInput').value;
+  if (!url || url === '请先生成报告') { showToast('请先生成评估报告'); return; }
+
+  showExportOverlay('正在生成分享卡片…');
+  try {
+    const name = document.getElementById('productName').value.trim() || '未命名产品';
+    const total = scores.reduce((a,b) => a+b, 0);
+
+    // Build card canvas
+    const W = 800, H = 480;
+    const cardCanvas = document.createElement('canvas');
+    cardCanvas.width = W; cardCanvas.height = H;
+    const c = cardCanvas.getContext('2d');
+
+    // Background gradient
+    const bg = c.createLinearGradient(0, 0, W, H);
+    bg.addColorStop(0, '#0d0d18');
+    bg.addColorStop(1, '#1a1030');
+    c.fillStyle = bg;
+    c.fillRect(0, 0, W, H);
+
+    // Gold top border
+    c.fillStyle = '#e8c96a';
+    c.fillRect(0, 0, W, 3);
+
+    // Draw octagon radar (small, left side)
+    const octSize = 260, octX = 160, octY = H/2;
+    const R = 90;
+    function ptXY(deg, r) {
+      const rad = (deg - 90) * Math.PI / 180;
+      return [octX + r * Math.cos(rad), octY + r * Math.sin(rad)];
+    }
+    const angles = [90,45,0,315,270,225,180,135];
+    const colors = ['#e86a6a','#e8a06a','#e8c96a','#a0e86a','#6ae8c9','#6aa0e8','#9b6ae8','#e86aa0'];
+
+    // Grid rings
+    for (let ring = 2; ring <= 10; ring += 2) {
+      c.beginPath();
+      angles.forEach((a,i) => {
+        const [x,y] = ptXY(a, R * ring/10);
+        i===0 ? c.moveTo(x,y) : c.lineTo(x,y);
+      });
+      c.closePath();
+      c.strokeStyle = ring===10 ? 'rgba(232,201,106,0.2)' : 'rgba(255,255,255,0.06)';
+      c.lineWidth = 1; c.stroke();
+    }
+    // Spokes
+    angles.forEach(a => {
+      const [x,y] = ptXY(a, R);
+      c.beginPath(); c.moveTo(octX,octY); c.lineTo(x,y);
+      c.strokeStyle = 'rgba(255,255,255,0.08)'; c.lineWidth=1; c.stroke();
+    });
+    // Score polygon
+    c.beginPath();
+    angles.forEach((a,i) => {
+      const [x,y] = ptXY(a, R * scores[i]/10);
+      i===0 ? c.moveTo(x,y) : c.lineTo(x,y);
+    });
+    c.closePath();
+    const grad = c.createRadialGradient(octX,octY,0,octX,octY,R);
+    grad.addColorStop(0,'rgba(232,201,106,0.35)');
+    grad.addColorStop(1,'rgba(106,100,232,0.12)');
+    c.fillStyle = grad; c.fill();
+    c.strokeStyle = 'rgba(232,201,106,0.7)'; c.lineWidth=1.5; c.stroke();
+    // Dots
+    angles.forEach((a,i) => {
+      const [x,y] = ptXY(a, R * scores[i]/10);
+      c.beginPath(); c.arc(x,y,4,0,Math.PI*2);
+      c.fillStyle = colors[i]; c.fill();
+    });
+
+    // Right side text
+    const tx = 360;
+    c.fillStyle = 'rgba(232,201,106,0.6)';
+    c.font = '500 11px Space Mono, monospace';
+    c.fillText('OCTALYSIS GAMIFICATION REPORT', tx, 80);
+
+    c.fillStyle = '#ffffff';
+    c.font = 'bold 32px Noto Serif SC, serif';
+    c.fillText(name, tx, 130);
+
+    c.fillStyle = '#e8c96a';
+    c.font = 'bold 64px Space Mono, monospace';
+    c.fillText(total, tx, 210);
+    c.fillStyle = 'rgba(232,201,106,0.5)';
+    c.font = '500 18px Space Mono, monospace';
+    c.fillText('/80', tx + (total >= 10 ? 78 : 44), 210);
+
+    c.fillStyle = 'rgba(232,232,240,0.6)';
+    c.font = '500 13px Noto Serif SC, serif';
+    c.fillText('综合游戏化得分', tx, 240);
+
+    // Score bars for top 4 drives
+    const sorted = [...scores].map((s,i)=>({s,i})).sort((a,b)=>b.s-a.s);
+    const DRIVES_NAMES = ['史诗意义','进步成就','创意赋能','所有权','社交影响','稀缺渴望','未知好奇','亏损逃避'];
+    sorted.slice(0,4).forEach(({s,i}, row) => {
+      const by = 290 + row * 36;
+      c.fillStyle = 'rgba(232,232,240,0.5)';
+      c.font = '500 11px Noto Serif SC, serif';
+      c.fillText(DRIVES_NAMES[i], tx, by);
+      c.fillStyle = 'rgba(255,255,255,0.1)';
+      c.fillRect(tx, by+6, 280, 6);
+      c.fillStyle = colors[i];
+      c.fillRect(tx, by+6, 280 * s/10, 6);
+      c.fillStyle = colors[i];
+      c.font = 'bold 11px Space Mono, monospace';
+      c.fillText(s, tx + 288, by + 13);
+    });
+
+    // QR code area
+    const qrSize = 90;
+    c.fillStyle = '#ffffff';
+    c.fillRect(W - qrSize - 28, H - qrSize - 44, qrSize, qrSize);
+
+    // Draw QR into card using existing QR canvas
+    const qrWrap = document.getElementById('qrPlaceholder');
+    const qrImg = qrWrap.querySelector('img') || qrWrap.querySelector('canvas');
+    if (qrImg) {
+      try { c.drawImage(qrImg, W - qrSize - 28, H - qrSize - 44, qrSize, qrSize); } catch(e){}
+    }
+    c.fillStyle = 'rgba(232,232,240,0.4)';
+    c.font = '500 10px Space Mono, monospace';
+    c.textAlign = 'center';
+    c.fillText('扫码查看完整报告', W - qrSize/2 - 28, H - 22);
+    c.textAlign = 'left';
+
+    // Branding
+    c.fillStyle = 'rgba(232,201,106,0.35)';
+    c.font = '500 10px Space Mono, monospace';
+    c.fillText('Created by JayWen · v1.6.5', tx, H - 24);
+
+    // Download card
+    const dataUrl = cardCanvas.toDataURL('image/png');
+    const link = document.createElement('a');
+    link.download = `${name}-朋友圈分享卡.png`;
+    link.href = dataUrl;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast('✓ 分享卡片已保存，长按图片发至朋友圈');
+    closeModal('shareModal');
+  } catch(e) {
+    console.error(e);
+    showToast('生成失败：' + e.message);
+  }
+  hideExportOverlay();
+}
+
+// ── Native Web Share (iOS / Android) - kept as fallback ──
 function nativeShare() {
   const url = document.getElementById('shareUrlInput').value;
   const name = document.getElementById('productName').value.trim() || '未命名产品';
-  navigator.share({ title: `${name} · 八角行为模型评估`, text: '我用八角模型评估了一款产品，来看看结果：', url }).catch(() => {});
+  if (navigator.share) {
+    navigator.share({ title: `${name} · 八角行为模型评估`, text: '我用八角模型评估了一款产品，来看看结果：', url }).catch(() => {});
+  }
 }
 
 // ── Toast ──
@@ -1808,112 +1961,101 @@ function hideExportOverlay() {
   document.getElementById('exportOverlay').classList.remove('active');
 }
 
-// ── Snapshot canvases: replace with img in cloned doc ──
-function snapshotCanvases(clonedDoc) {
-  const origCanvases = document.querySelectorAll('canvas');
-  const clonedCanvases = clonedDoc.querySelectorAll('canvas');
-  origCanvases.forEach((orig, i) => {
-    try {
-      const img = clonedDoc.createElement('img');
-      img.src = orig.toDataURL('image/png');
-      img.style.cssText = orig.style.cssText;
-      img.style.width = orig.offsetWidth + 'px';
-      img.style.height = orig.offsetHeight + 'px';
-      clonedCanvases[i]?.parentNode?.replaceChild(img, clonedCanvases[i]);
-    } catch(e) {}
-  });
-}
-
-// ── Capture report with light theme by mutating live DOM ──
-async function captureWithLightTheme() {
-  const panel = document.getElementById('resultPanel');
-
-  // 1. Inject temporary light stylesheet into real document
-  const lightStyle = document.createElement('style');
-  lightStyle.id = '__export_light__';
-  lightStyle.textContent = `
-    body { background: #f5f4f0 !important; }
-    body::before { display: none !important; }
-    .topbar { visibility: hidden !important; }
-    #resultPanel { background: #f5f4f0 !important; }
-    .report-hero { background: #1e1e32 !important; border-color: #1e1e32 !important; }
-    .report-eyebrow { color: #e8c96a !important; }
-    .report-product-name { color: #ffffff !important; }
-    .report-date { color: #9999bb !important; }
-    .report-score-num { color: #e8c96a !important; }
-    .report-score-denom, .report-score-label { color: #9999bb !important; }
-    .report-grade { color: #e8c96a !important; border-color: #e8c96a !important; }
-    .stat-cell { background: #ffffff !important; border-color: #ccc !important; }
-    .stat-cell-label, .stat-cell-sub { color: #555544 !important; }
-    .stat-cell-value { color: inherit !important; }
-    .report-section, .report-recommendations, .report-conclusion {
-      background: #ffffff !important; border-color: #ccccbb !important;
-    }
-    .section-title { color: #7a5800 !important; border-color: #ccccbb !important; }
-    .result-bar-name { color: #111122 !important; font-weight: 600 !important; }
-    .result-bar-score { color: #333344 !important; }
-    .result-bar-track { background: #ddddd0 !important; }
-    .profile-card { background: #fafaf6 !important; border-color: #ccccbb !important; }
-    .profile-card-label { color: #555544 !important; }
-    .profile-card-score { color: inherit !important; }
-    .profile-card-bar { background: #ddddd0 !important; }
-    .profile-card-desc { color: #111122 !important; }
-    .rec-card { background: #ffffff !important; border-color: #ccccbb !important; }
-    .rec-card-name { color: #111122 !important; font-weight: 700 !important; }
-    .rec-score-badge { background: transparent !important; font-weight: 700 !important; }
-    .rec-level-tag { font-weight: 700 !important; opacity: 1 !important; }
-    .rec-card-text { color: #111122 !important; }
-    .rec-action-item { color: #222233 !important; }
-    .rec-actions { border-color: #ccccbb !important; }
-    .conclusion-text { color: #111122 !important; }
-    .conclusion-text strong { color: #000011 !important; }
-    .insight-tag { opacity: 1 !important; }
-  `;
-  document.head.appendChild(lightStyle);
-
-  // 2. Replace octagon canvas with a static img snapshot
-  const origCanvas = document.getElementById('octCanvas');
-  const canvasDataUrl = origCanvas.toDataURL('image/png');
-  const fakeImg = document.createElement('img');
-  fakeImg.src = canvasDataUrl;
-  fakeImg.style.cssText = `width:${origCanvas.offsetWidth}px;height:${origCanvas.offsetHeight}px;display:block;margin:0 auto;`;
-  origCanvas.style.display = 'none';
-  origCanvas.parentNode.insertBefore(fakeImg, origCanvas);
-
-  // 3. Wait for styles to apply
-  await new Promise(r => setTimeout(r, 200));
-
-  // 4. Capture full height — no cropping
-  const fullHeight = panel.scrollHeight;
-  const canvas = await html2canvas(panel, {
-    backgroundColor: '#f5f4f0',
-    scale: 2,
-    useCORS: true,
-    allowTaint: true,
-    logging: false,
-    windowWidth: 1200,
-    height: fullHeight,
-    y: 0,
-  });
-
-  // 5. Restore DOM
-  document.head.removeChild(lightStyle);
-  origCanvas.style.display = '';
-  fakeImg.parentNode.removeChild(fakeImg);
-
-  return canvas;
-}
-
-// ── Export as Image ──
 async function exportImage() {
   if (!document.getElementById('resultPanel').classList.contains('visible')) {
     showToast('请先生成评估报告'); return;
   }
   showExportOverlay('正在生成图片…');
   try {
-    const canvas = await captureWithLightTheme();
+    const panel = document.getElementById('resultPanel');
     const name = document.getElementById('productName').value.trim() || '八角评估报告';
-    const dataUrl = canvas.toDataURL('image/png');
+
+    // Step 1: inject light theme + snapshot canvas on real DOM
+    const lightStyle = document.createElement('style');
+    lightStyle.id = '__export_light__';
+    lightStyle.textContent = `
+      body { background: #f5f4f0 !important; }
+      body::before { display: none !important; }
+      .topbar { visibility: hidden !important; }
+      #resultPanel { background: #f5f4f0 !important; }
+      .report-hero { background: #1e1e32 !important; border-color: #1e1e32 !important; }
+      .report-eyebrow { color: #e8c96a !important; }
+      .report-product-name { color: #ffffff !important; }
+      .report-date { color: #9999bb !important; }
+      .report-score-num { color: #e8c96a !important; }
+      .report-score-denom, .report-score-label { color: #9999bb !important; }
+      .report-grade { color: #e8c96a !important; border-color: #e8c96a !important; }
+      .stat-cell { background: #ffffff !important; border-color: #ccc !important; }
+      .stat-cell-label, .stat-cell-sub { color: #555544 !important; }
+      .report-section, .report-recommendations, .report-conclusion {
+        background: #ffffff !important; border-color: #ccccbb !important;
+      }
+      .section-title { color: #7a5800 !important; border-color: #ccccbb !important; }
+      .result-bar-name { color: #111122 !important; font-weight: 600 !important; }
+      .result-bar-score { color: #333344 !important; }
+      .result-bar-track { background: #ddddd0 !important; }
+      .profile-card { background: #fafaf6 !important; border-color: #ccccbb !important; }
+      .profile-card-label { color: #555544 !important; }
+      .profile-card-score { color: inherit !important; }
+      .profile-card-bar { background: #ddddd0 !important; }
+      .profile-card-desc { color: #111122 !important; }
+      .rec-card { background: #ffffff !important; border-color: #ccccbb !important; }
+      .rec-card-name { color: #111122 !important; font-weight: 700 !important; }
+      .rec-score-badge { background: transparent !important; font-weight: 700 !important; }
+      .rec-level-tag { font-weight: 700 !important; opacity: 1 !important; }
+      .rec-card-text { color: #111122 !important; }
+      .rec-action-item { color: #222233 !important; }
+      .rec-actions { border-color: #ccccbb !important; }
+      .conclusion-text { color: #111122 !important; }
+      .conclusion-text strong { color: #000011 !important; }
+      .insight-tag { opacity: 1 !important; }
+    `;
+    document.head.appendChild(lightStyle);
+
+    // Snapshot octagon canvas → img
+    const origCanvas = document.getElementById('octCanvas');
+    const canvasDataUrl = origCanvas.toDataURL('image/png');
+    const fakeImg = document.createElement('img');
+    fakeImg.src = canvasDataUrl;
+    fakeImg.style.cssText = `width:${origCanvas.offsetWidth}px;height:${origCanvas.offsetHeight}px;display:block;margin:0 auto;`;
+    origCanvas.style.display = 'none';
+    origCanvas.parentNode.insertBefore(fakeImg, origCanvas);
+
+    await new Promise(r => setTimeout(r, 200));
+
+    // Step 2: capture at scale=3 for sharpness
+    const raw = await html2canvas(panel, {
+      backgroundColor: '#f5f4f0',
+      scale: 3,
+      useCORS: true,
+      allowTaint: true,
+      logging: false,
+      windowWidth: 1200,
+      height: panel.scrollHeight,
+      y: 0,
+    });
+
+    // Restore DOM
+    document.head.removeChild(lightStyle);
+    origCanvas.style.display = '';
+    fakeImg.parentNode.removeChild(fakeImg);
+
+    // Step 3: scale down to fixed 1200px wide on an output canvas
+    const TARGET_W = 1200;
+    const scale = TARGET_W / raw.width;
+    const outW = TARGET_W;
+    const outH = Math.round(raw.height * scale);
+
+    const out = document.createElement('canvas');
+    out.width = outW;
+    out.height = outH;
+    const octx = out.getContext('2d');
+    octx.imageSmoothingEnabled = true;
+    octx.imageSmoothingQuality = 'high';
+    octx.drawImage(raw, 0, 0, outW, outH);
+
+    // Step 4: download
+    const dataUrl = out.toDataURL('image/png');
     const link = document.createElement('a');
     link.download = `${name}-octalysis.png`;
     link.href = dataUrl;
@@ -1925,49 +2067,6 @@ async function exportImage() {
   } catch(e) {
     console.error('Export image error:', e);
     showToast('图片生成失败：' + e.message);
-  }
-  hideExportOverlay();
-}
-
-// ── Export as PDF (single page, full content, no cropping) ──
-async function exportPDF() {
-  if (!document.getElementById('resultPanel').classList.contains('visible')) {
-    showToast('请先生成评估报告'); return;
-  }
-  showExportOverlay('正在生成 PDF…');
-  try {
-    const { jsPDF } = window.jspdf;
-    const canvas = await captureWithLightTheme();
-
-    const imgData = canvas.toDataURL('image/jpeg', 0.95);
-
-    // Build a single page exactly the size of the content (no cropping, no multi-page splits)
-    const pxW = canvas.width / 2;   // divide by scale=2 to get CSS px
-    const pxH = canvas.height / 2;
-    const PT_PER_PX = 0.75;         // 1 CSS px = 0.75pt at 96dpi
-    const pageW = pxW * PT_PER_PX;
-    const pageH = pxH * PT_PER_PX;
-
-    const pdf = new jsPDF({
-      orientation: 'portrait',
-      unit: 'pt',
-      format: [pageW, pageH],   // custom page size = exact content size
-    });
-    pdf.addImage(imgData, 'JPEG', 0, 0, pageW, pageH, '', 'FAST');
-
-    const name = document.getElementById('productName').value.trim() || '八角评估报告';
-    const pdfDataUri = pdf.output('datauristring');
-    const link = document.createElement('a');
-    link.href = pdfDataUri;
-    link.download = `${name}-octalysis.pdf`;
-    link.style.display = 'none';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    showToast('✓ PDF 已保存');
-  } catch(e) {
-    console.error('Export PDF error:', e);
-    showToast('PDF 生成失败：' + e.message);
   }
   hideExportOverlay();
 }
