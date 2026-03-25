@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>八角行为模型评估工具</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700;900&family=Space+Mono:wght@400;700&display=swap');
 
@@ -93,6 +96,14 @@
     color: var(--muted);
     font-size: 14px;
     letter-spacing: 0.05em;
+  }
+
+  .creator-tag {
+    margin-top: 8px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--gold-dim);
+    letter-spacing: 0.15em;
   }
 
   /* Product name input */
@@ -668,7 +679,7 @@
     padding: 1px 7px;
     border: 1px solid var(--color);
     color: var(--color);
-    background: color-mix(in srgb, var(--color) 10%, transparent);
+    background: transparent;
   }
 
   .rec-level-tag {
@@ -1175,7 +1186,7 @@
       </div>
       <div class="about-row">
         <span class="about-key">VERSION</span>
-        <span class="about-val gold">v1.3.0</span>
+        <span class="about-val gold">v1.6.2</span>
       </div>
       <div class="about-row">
         <span class="about-key">DEVELOPER</span>
@@ -1219,6 +1230,7 @@
     <div class="title-badge">Octalysis Framework</div>
     <h1>八角行为<span>模型</span>评估</h1>
     <p class="subtitle">Yu-kai Chou 游戏化实战框架 · 八大核心驱动力</p>
+    <p class="creator-tag">Created by JayWen &nbsp;·&nbsp; v1.6.2</p>
   </header>
 
   <div class="product-input-wrap">
@@ -1719,16 +1731,38 @@ function buildShareUrl() {
 // ── QR code renderer (using Google Charts API as fallback, pure-JS via qrcode.js from CDN) ──
 function renderQR(url) {
   const wrap = document.getElementById('qrPlaceholder');
-  // Use QRCode.js if loaded, else use Google Charts image API
+  wrap.innerHTML = '';
+  wrap.style.cssText = 'width:180px;height:180px;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;background:#ffffff;padding:10px;box-sizing:border-box;';
+
   if (window.QRCode) {
-    wrap.innerHTML = '';
-    wrap.style.cssText = 'width:180px;height:180px;border:1px solid #2a2a3a;display:block;margin:0 auto 10px;background:#fff;padding:8px;';
-    new QRCode(wrap, { text: url, width: 164, height: 164, colorDark: '#0a0a0f', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+    const inner = document.createElement('div');
+    inner.style.cssText = 'width:160px;height:160px;overflow:hidden;';
+    wrap.appendChild(inner);
+    new QRCode(inner, {
+      text: url,
+      width: 160,
+      height: 160,
+      colorDark: '#0a0a0f',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+    // QRCode.js appends a canvas then an img — ensure both fit
+    setTimeout(() => {
+      inner.querySelectorAll('canvas,img').forEach(el => {
+        el.style.width = '160px';
+        el.style.height = '160px';
+        el.style.display = 'block';
+      });
+    }, 100);
   } else {
     const encoded = encodeURIComponent(url);
-    wrap.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encoded}&color=0a0a0f&bgcolor=ffffff" style="width:180px;height:180px;border:1px solid #2a2a3a;display:block;margin:0 auto 10px;" alt="QR Code" />`;
+    const img = document.createElement('img');
+    img.src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encoded}&color=0a0a0f&bgcolor=ffffff`;
+    img.style.cssText = 'width:160px;height:160px;display:block;';
+    img.alt = 'QR Code';
+    wrap.appendChild(img);
   }
-  // Show native share button if Web Share API is available
+
   if (navigator.share) {
     document.getElementById('nativeShareBtn').style.display = 'flex';
   }
@@ -1774,71 +1808,172 @@ function hideExportOverlay() {
   document.getElementById('exportOverlay').classList.remove('active');
 }
 
-// ── Export as Image (html2canvas) ──
+// ── Snapshot canvases: replace with img in cloned doc ──
+function snapshotCanvases(clonedDoc) {
+  const origCanvases = document.querySelectorAll('canvas');
+  const clonedCanvases = clonedDoc.querySelectorAll('canvas');
+  origCanvases.forEach((orig, i) => {
+    try {
+      const img = clonedDoc.createElement('img');
+      img.src = orig.toDataURL('image/png');
+      img.style.cssText = orig.style.cssText;
+      img.style.width = orig.offsetWidth + 'px';
+      img.style.height = orig.offsetHeight + 'px';
+      clonedCanvases[i]?.parentNode?.replaceChild(img, clonedCanvases[i]);
+    } catch(e) {}
+  });
+}
+
+// ── Capture report with light theme by mutating live DOM ──
+async function captureWithLightTheme() {
+  const panel = document.getElementById('resultPanel');
+
+  // 1. Inject temporary light stylesheet into real document
+  const lightStyle = document.createElement('style');
+  lightStyle.id = '__export_light__';
+  lightStyle.textContent = `
+    body { background: #f5f4f0 !important; }
+    body::before { display: none !important; }
+    .topbar { visibility: hidden !important; }
+    #resultPanel { background: #f5f4f0 !important; }
+    .report-hero { background: #1e1e32 !important; border-color: #1e1e32 !important; }
+    .report-eyebrow { color: #e8c96a !important; }
+    .report-product-name { color: #ffffff !important; }
+    .report-date { color: #9999bb !important; }
+    .report-score-num { color: #e8c96a !important; }
+    .report-score-denom, .report-score-label { color: #9999bb !important; }
+    .report-grade { color: #e8c96a !important; border-color: #e8c96a !important; }
+    .stat-cell { background: #ffffff !important; border-color: #ccc !important; }
+    .stat-cell-label, .stat-cell-sub { color: #555544 !important; }
+    .stat-cell-value { color: inherit !important; }
+    .report-section, .report-recommendations, .report-conclusion {
+      background: #ffffff !important; border-color: #ccccbb !important;
+    }
+    .section-title { color: #7a5800 !important; border-color: #ccccbb !important; }
+    .result-bar-name { color: #111122 !important; font-weight: 600 !important; }
+    .result-bar-score { color: #333344 !important; }
+    .result-bar-track { background: #ddddd0 !important; }
+    .profile-card { background: #fafaf6 !important; border-color: #ccccbb !important; }
+    .profile-card-label { color: #555544 !important; }
+    .profile-card-score { color: inherit !important; }
+    .profile-card-bar { background: #ddddd0 !important; }
+    .profile-card-desc { color: #111122 !important; }
+    .rec-card { background: #ffffff !important; border-color: #ccccbb !important; }
+    .rec-card-name { color: #111122 !important; font-weight: 700 !important; }
+    .rec-score-badge { background: transparent !important; font-weight: 700 !important; }
+    .rec-level-tag { font-weight: 700 !important; opacity: 1 !important; }
+    .rec-card-text { color: #111122 !important; }
+    .rec-action-item { color: #222233 !important; }
+    .rec-actions { border-color: #ccccbb !important; }
+    .conclusion-text { color: #111122 !important; }
+    .conclusion-text strong { color: #000011 !important; }
+    .insight-tag { opacity: 1 !important; }
+  `;
+  document.head.appendChild(lightStyle);
+
+  // 2. Replace octagon canvas with a static img snapshot
+  const origCanvas = document.getElementById('octCanvas');
+  const canvasDataUrl = origCanvas.toDataURL('image/png');
+  const fakeImg = document.createElement('img');
+  fakeImg.src = canvasDataUrl;
+  fakeImg.style.cssText = `width:${origCanvas.offsetWidth}px;height:${origCanvas.offsetHeight}px;display:block;margin:0 auto;`;
+  origCanvas.style.display = 'none';
+  origCanvas.parentNode.insertBefore(fakeImg, origCanvas);
+
+  // 3. Wait for styles to apply
+  await new Promise(r => setTimeout(r, 200));
+
+  // 4. Capture full height — no cropping
+  const fullHeight = panel.scrollHeight;
+  const canvas = await html2canvas(panel, {
+    backgroundColor: '#f5f4f0',
+    scale: 2,
+    useCORS: true,
+    allowTaint: true,
+    logging: false,
+    windowWidth: 1200,
+    height: fullHeight,
+    y: 0,
+  });
+
+  // 5. Restore DOM
+  document.head.removeChild(lightStyle);
+  origCanvas.style.display = '';
+  fakeImg.parentNode.removeChild(fakeImg);
+
+  return canvas;
+}
+
+// ── Export as Image ──
 async function exportImage() {
+  if (!document.getElementById('resultPanel').classList.contains('visible')) {
+    showToast('请先生成评估报告'); return;
+  }
   showExportOverlay('正在生成图片…');
   try {
-    if (!window.html2canvas) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
-    const target = document.getElementById('resultPanel');
-    const canvas = await html2canvas(target, {
-      backgroundColor: '#0a0a0f',
-      scale: 2,
-      useCORS: true,
-      logging: false,
-    });
-    const link = document.createElement('a');
+    const canvas = await captureWithLightTheme();
     const name = document.getElementById('productName').value.trim() || '八角评估报告';
+    const dataUrl = canvas.toDataURL('image/png');
+    const link = document.createElement('a');
     link.download = `${name}-octalysis.png`;
-    link.href = canvas.toDataURL('image/png');
+    link.href = dataUrl;
+    link.style.display = 'none';
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
     showToast('✓ 图片已保存');
   } catch(e) {
-    showToast('图片生成失败，请重试');
-    console.error(e);
+    console.error('Export image error:', e);
+    showToast('图片生成失败：' + e.message);
   }
   hideExportOverlay();
 }
 
-// ── Export as PDF (jsPDF + html2canvas) ──
+// ── Export as PDF (single page, full content, no cropping) ──
 async function exportPDF() {
+  if (!document.getElementById('resultPanel').classList.contains('visible')) {
+    showToast('请先生成评估报告'); return;
+  }
   showExportOverlay('正在生成 PDF…');
   try {
-    if (!window.html2canvas) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
-    if (!window.jspdf) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
     const { jsPDF } = window.jspdf;
-    const target = document.getElementById('resultPanel');
-    const canvas = await html2canvas(target, {
-      backgroundColor: '#0a0a0f',
-      scale: 2,
-      useCORS: true,
-      logging: false,
-    });
+    const canvas = await captureWithLightTheme();
+
     const imgData = canvas.toDataURL('image/jpeg', 0.95);
-    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const pageW = pdf.internal.pageSize.getWidth();
-    const pageH = pdf.internal.pageSize.getHeight();
-    const imgW = canvas.width;
-    const imgH = canvas.height;
-    const ratio = pageW / (imgW / 2 * 0.2645); // px to mm
-    const renderedH = (imgH / 2) * 0.2645 * (pageW / ((imgW / 2) * 0.2645));
-    let y = 0;
-    // Multi-page support
-    while (y < renderedH) {
-      if (y > 0) pdf.addPage();
-      pdf.addImage(imgData, 'JPEG', 0, -y, pageW, renderedH);
-      y += pageH;
-    }
+
+    // Build a single page exactly the size of the content (no cropping, no multi-page splits)
+    const pxW = canvas.width / 2;   // divide by scale=2 to get CSS px
+    const pxH = canvas.height / 2;
+    const PT_PER_PX = 0.75;         // 1 CSS px = 0.75pt at 96dpi
+    const pageW = pxW * PT_PER_PX;
+    const pageH = pxH * PT_PER_PX;
+
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'pt',
+      format: [pageW, pageH],   // custom page size = exact content size
+    });
+    pdf.addImage(imgData, 'JPEG', 0, 0, pageW, pageH, '', 'FAST');
+
     const name = document.getElementById('productName').value.trim() || '八角评估报告';
-    pdf.save(`${name}-octalysis.pdf`);
+    const pdfDataUri = pdf.output('datauristring');
+    const link = document.createElement('a');
+    link.href = pdfDataUri;
+    link.download = `${name}-octalysis.pdf`;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
     showToast('✓ PDF 已保存');
   } catch(e) {
-    showToast('PDF 生成失败，请重试');
-    console.error(e);
+    console.error('Export PDF error:', e);
+    showToast('PDF 生成失败：' + e.message);
   }
   hideExportOverlay();
 }
 
-// ── Dynamic script loader ──
+
+// ── Dynamic script loader (fallback) ──
 function loadScript(src) {
   return new Promise((res, rej) => {
     const s = document.createElement('script');
@@ -1847,8 +1982,6 @@ function loadScript(src) {
   });
 }
 
-// Preload QRCode.js quietly
-loadScript('https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js').catch(() => {});
 
 </script>
 </body>
